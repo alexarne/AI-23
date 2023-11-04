@@ -65,14 +65,15 @@ class PlayerControllerMinimax(PlayerController):
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
 
-        DEPTH = 10 # idk what is reasonable, 10 could be wayyy too deep
+        DEPTH = 5  # idk what is reasonable
 
         children = initial_tree_node.compute_and_get_children()
         moves = []
         for child in children:
             moves.append(self.minimax(child, DEPTH, 0))
 
-        best_move = max(moves) # IS THIS WHAT MINIMAX EVEN RETURNS OR DO WE HAVE TO TRANSLATE IT?
+        # get index of best move
+        best_move = max(enumerate(moves), key=lambda x: x[1])[0]
 
         # random_move = random.randrange(5)
         return ACTION_TO_STR[best_move]
@@ -85,15 +86,18 @@ class PlayerControllerMinimax(PlayerController):
     def euclidian(self, hook, fish):
         return np.sqrt(abs(fish[0]-hook[0])**2 + abs(fish[1]-hook[1])**2)
 
-    # ν(A, s) = Score(Green boat) − Score(Red boat) from instructions, idk if or how player id should be accounted for
-    def heuristic(self, node):
+    # ν(A, s) = Score(Green boat) − Score(Red boat) from instructions, idk if or how player id should be accounted for, making player1 score negative makes sense to me
+    def heuristic(self, node, player):
         score0, score1 = node.state.get_player_scores()
-        return score0 - score1
+        value = score0 - score1
+        if player == 1:
+            value *= -1
+        return value
 
     def minimax(self, node, depth, player):
         children = node.compute_and_get_children()
         if depth == 0 or len(children) == 0:
-            return self.heuristic()
+            return self.heuristic(node, player)
         if player == 0: # maximuzing player
             value = -np.inf
             for child in children:
