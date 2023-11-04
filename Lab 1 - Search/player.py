@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import random
+import numpy as np
 
 from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
-
 
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
@@ -65,5 +65,58 @@ class PlayerControllerMinimax(PlayerController):
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
 
-        random_move = random.randrange(5)
-        return ACTION_TO_STR[random_move]
+        DEPTH = 10 # idk what is reasonable, 10 could be wayyy too deep
+
+        children = initial_tree_node.compute_and_get_children()
+        moves = []
+        for child in children:
+            moves.append(self.minimax(child, DEPTH, 0))
+
+        best_move = max(moves) # IS THIS WHAT MINIMAX EVEN RETURNS OR DO WE HAVE TO TRANSLATE IT?
+
+        # random_move = random.randrange(5)
+        return ACTION_TO_STR[best_move]
+    
+    # Manhattan distance
+    def manhattan(self, hook, fish):
+        return abs(fish[0]-hook[0]) + abs(fish[1]-hook[1])
+
+    # Euclidian distance
+    def euclidian(self, hook, fish):
+        return np.sqrt(abs(fish[0]-hook[0])**2 + abs(fish[1]-hook[1])**2)
+
+    # ν(A, s) = Score(Green boat) − Score(Red boat) from instructions, idk if or how player id should be accounted for
+    def heuristic(self, node):
+        score0, score1 = node.state.get_player_scores()
+        return score0 - score1
+
+    def minimax(self, node, depth, player):
+        children = node.compute_and_get_children()
+        if depth == 0 or len(children) == 0:
+            return self.heuristic()
+        if player == 0: # maximuzing player
+            value = -np.inf
+            for child in children:
+                value = max(value, self.minimax(child, depth-1, 1))
+            return value
+        else: # player 1, minimizing player
+            value = np.inf
+            for child in children:
+                value = min(value, self.minimax(child, depth-1, 0))
+            return value
+
+    # ... based on this from wikipedia:
+
+# function minimax(node, depth, maximizingPlayer) is
+    # if depth = 0 or node is a terminal node then
+    #     return the heuristic value of node
+    # if maximizingPlayer then
+    #     value := −∞
+    #     for each child of node do
+    #         value := max(value, minimax(child, depth − 1, FALSE))
+    #     return value
+    # else (* minimizing player *)
+    #     value := +∞
+    #     for each child of node do
+    #         value := min(value, minimax(child, depth − 1, TRUE))
+    #     return value
