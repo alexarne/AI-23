@@ -81,8 +81,8 @@ class PlayerControllerMinimax(PlayerController):
         best_move = max(enumerate(moves), key=lambda x: x[1])[0]
         
         # solve it lazily using this, but definitely not ideal XD:
-        # if best_move == 0 :
-        #     best_move = random.randrange(5)
+        if best_move == 0 :
+            best_move = random.randrange(5)
 
         print("move chosen:", best_move)
 
@@ -91,14 +91,15 @@ class PlayerControllerMinimax(PlayerController):
     
     # Manhattan distance
     def manhattan(self, hook, fish):
-        return abs(fish[0]-hook[0]) + abs(fish[1]-hook[1])
+        x = abs(fish[0]-hook[0])
+        return min(x, 20-x) + abs(fish[1]-hook[1])
 
     # Euclidian distance
     def euclidian(self, hook, fish):
         return np.sqrt(abs(fish[0]-hook[0])**2 + abs(fish[1]-hook[1])**2)
 
     # ν(A, s) = Score(Green boat) − Score(Red boat) from instructions, idk if or how player id should be accounted for, making player1 score negative makes sense to me
-    def heuristic(self, node, player):
+    def heuristic(self, node):
         score0, score1 = node.state.get_player_scores()
         value = score0 - score1
 
@@ -106,25 +107,41 @@ class PlayerControllerMinimax(PlayerController):
         # value = 0
         
         # try to find smallest distance from fish
-        dist = []
+        # dist = []
         hooks = node.state.get_hook_positions()
-        fish_score = list(node.state.get_fish_scores().values())
-        for idx, fish in enumerate(list(node.state.get_fish_positions().values())):
-            # print("fish pos:",fish[0],",",fish[1],"fish score:",fish_score[idx])
-            dist.append(self.manhattan(hooks[player], fish)*fish_score[idx])
-        if dist: # "not empty"
-            value -= min(dist)
+        scores = node.state.get_fish_scores() #list(node.state.get_fish_scores().values())
+        fishes = node.state.get_fish_positions()
+        closest = np.inf
+        score = 0
+        for fish in fishes:
+            print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
+            distance = self.manhattan(hooks[0], fishes[fish])
+            if distance == 0:
+                value += scores[fish]
+                break
+            if scores[fish] > 0 and (distance < closest or (distance == closest and scores[fish] > score)):
+                closest = distance
+                score = scores[fish]
+        
+        # the metric is "score/distance"
+        value += score/closest
+
+            # if distance > 0:
+            #     dist.append(scores[fish]/distance)
+        # if dist: # "not empty"
+        #     value -= min(dist)
         
         # player 1 is evil
-        if player == 1:
-            value *= -1
+        # if player == 1:
+        #     value *= -1
+
         # print("heuristic value:", value)
         return value
 
     def minimax(self, node, depth, alpha, beta, player):
         children = node.compute_and_get_children()
         if depth == 0 or len(children) == 0:
-            return self.heuristic(node, player)
+            return self.heuristic(node)
         if player == 0: # maximizing player
             value = -np.inf
             for child in children:
