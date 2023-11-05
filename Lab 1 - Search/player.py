@@ -70,7 +70,7 @@ class PlayerControllerMinimax(PlayerController):
         children = initial_tree_node.compute_and_get_children()
         moves = []
         for child in children:
-            moves.append(self.minimax(child, DEPTH, 0))
+            moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 0))
 
         # get index of best move
         best_move = max(enumerate(moves), key=lambda x: x[1])[0]
@@ -94,19 +94,25 @@ class PlayerControllerMinimax(PlayerController):
             value *= -1
         return value
 
-    def minimax(self, node, depth, player):
+    def minimax(self, node, depth, alpha, beta, player):
         children = node.compute_and_get_children()
         if depth == 0 or len(children) == 0:
             return self.heuristic(node, player)
         if player == 0: # maximuzing player
             value = -np.inf
             for child in children:
-                value = max(value, self.minimax(child, depth-1, 1))
+                value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
+                alpha = max(alpha, value)
+                if beta <= alpha:
+                    break
             return value
         else: # player 1, minimizing player
             value = np.inf
             for child in children:
-                value = min(value, self.minimax(child, depth-1, 0))
+                value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
+                beta = min(beta, value)
+                if beta <= alpha:
+                    break
             return value
 
     # ... based on this from wikipedia:
