@@ -65,15 +65,26 @@ class PlayerControllerMinimax(PlayerController):
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
 
-        DEPTH = 5  # idk what is reasonable
+        DEPTH = 3  # idk what is reasonable
 
         children = initial_tree_node.compute_and_get_children()
         moves = []
         for child in children:
             moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 0))
 
+        # debug print
+        for idx, move in enumerate(moves):
+            print("move",idx, " minimax score:", move)
+
         # get index of best move
+        # this doesn't (always) work by itself if there are multiple equally good:
         best_move = max(enumerate(moves), key=lambda x: x[1])[0]
+        
+        # solve it lazily using this, but definitely not ideal XD:
+        # if best_move == 0 :
+        #     best_move = random.randrange(5)
+
+        print("move chosen:", best_move)
 
         # random_move = random.randrange(5)
         return ACTION_TO_STR[best_move]
@@ -90,15 +101,31 @@ class PlayerControllerMinimax(PlayerController):
     def heuristic(self, node, player):
         score0, score1 = node.state.get_player_scores()
         value = score0 - score1
+
+        # # try heuristic without score
+        # value = 0
+        
+        # try to find smallest distance from fish
+        dist = []
+        hooks = node.state.get_hook_positions()
+        fish_score = list(node.state.get_fish_scores().values())
+        for idx, fish in enumerate(list(node.state.get_fish_positions().values())):
+            # print("fish pos:",fish[0],",",fish[1],"fish score:",fish_score[idx])
+            dist.append(self.manhattan(hooks[player], fish)*fish_score[idx])
+        if dist: # "not empty"
+            value -= min(dist)
+        
+        # player 1 is evil
         if player == 1:
             value *= -1
+        # print("heuristic value:", value)
         return value
 
     def minimax(self, node, depth, alpha, beta, player):
         children = node.compute_and_get_children()
         if depth == 0 or len(children) == 0:
             return self.heuristic(node, player)
-        if player == 0: # maximuzing player
+        if player == 0: # maximizing player
             value = -np.inf
             for child in children:
                 value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
