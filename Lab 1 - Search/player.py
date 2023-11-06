@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import random
 import numpy as np
+from time import time
 
 from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
@@ -27,6 +28,9 @@ class PlayerControllerHuman(PlayerController):
 class PlayerControllerMinimax(PlayerController):
 
     def __init__(self):
+        self.repeated_states = {}
+        self.initial_time = time()
+        self.limit = 0.025
         super(PlayerControllerMinimax, self).__init__()
 
     def player_loop(self):
@@ -65,20 +69,61 @@ class PlayerControllerMinimax(PlayerController):
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
 
-        DEPTH = 3  # idk what is reasonable
+        best_move = self.iterative_deepening(initial_tree_node)
 
-        children = initial_tree_node.compute_and_get_children()
+        # DEPTH = 4  # idk what is reasonable
+
+        # children = initial_tree_node.compute_and_get_children()
+        # moves = []
+        # for child in children:
+        #     moves.append(self.iterative_deepening(child))
+        #     # moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 1))
+
+        # # get index of best move
+        # best_move = max(enumerate(moves), key=lambda x: x[1])[0]
+
+        # print("move chosen:", best_move)
+
+        # random_move = random.randrange(5)
+        return ACTION_TO_STR[best_move]
+
+    def iterative_deepening(self, initial_tree_node):
+        self.initial_time = time()
+        # self.repeated_states = {}
+        depth = 1
+        while True:
+            try:
+                best_move = self.run_minimax(initial_tree_node, depth, -np.inf, np.inf)
+                print("depth", depth, "score:", best_move)
+                depth += 1
+            except:
+                print("couldn't do depth", depth)
+                break
+        return best_move
+    
+    def run_minimax(self, node, depth, alpha, beta):
+        children = node.compute_and_get_children()
         moves = []
         for child in children:
-            moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 0))
+            moves.append(self.minimax(child, depth, alpha, beta, 1))
+        
+        best_value = max(moves)
+        best_moves = []
+        for move, value in enumerate(moves):
+            if value > best_value:
+                best_value = value
+                best_moves = []
+            if value >= best_value:
+                best_moves.append(move)
+        for idx, move in enumerate(moves):
+            print("move",idx, "("+ACTION_TO_STR[idx]+") minimax score:", move)
+        print("best_moves =", best_moves)
 
         # get index of best move
         best_move = max(enumerate(moves), key=lambda x: x[1])[0]
 
         print("move chosen:", best_move)
-
-        # random_move = random.randrange(5)
-        return ACTION_TO_STR[best_move]
+        return best_move
     
     # Manhattan distance
     def manhattan(self, hook, fish):
@@ -88,6 +133,15 @@ class PlayerControllerMinimax(PlayerController):
     # Euclidian distance
     def euclidian(self, hook, fish):
         return np.sqrt(abs(fish[0]-hook[0])**2 + abs(fish[1]-hook[1])**2)
+
+    def hashish(self, state):
+        hooks = state.get_hook_positions()
+        h = str(hooks[0])+str(hooks[1])
+        fishes = state.get_fish_positions()
+        fish_scores = state.get_fish_scores()
+        for idx, fish in enumerate(fishes):
+            h += str(idx)+str(fishes[fish])+str(fish_scores[fish])
+        return h.replace(" ", "")
 
     # ν(A, s) = Score(Green boat) − Score(Red boat) + tiebreaker, where
     #   Score() takes fish-on-hook into account and
@@ -129,25 +183,40 @@ class PlayerControllerMinimax(PlayerController):
         return sorted(nodes, key=self.heuristic, reverse=True)
 
     def minimax(self, node, depth, alpha, beta, player):
-        children = self.sort_nodes(node.compute_and_get_children())
+
+        if time() - self.initial_time > self.limit:
+            raise TimeoutError
+
+        key = self.hashish(node.state)
+        if key in self.repeated_states:
+            return self.repeated_states[key]
+
+        children = node.compute_and_get_children()
         if depth == 0 or len(children) == 0:
             return self.heuristic(node)
         if player == 0: # maximizing player
             value = -np.inf
+            # for child in sorted(children, key=self.heuristic, reverse=False):
             for child in children:
                 value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
                 alpha = max(alpha, value)
                 if beta <= alpha:
                     break
-            return value
+            # return value
         else: # player 1, minimizing player
             value = np.inf
+            # for child in sorted(children, key=self.heuristic, reverse=True):
             for child in children:
                 value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
                 beta = min(beta, value)
                 if beta <= alpha:
                     break
             return value
+        
+        if key not in self.repeated_states or value > self.repeated_states[key]:
+            self.repeated_states[key] = value
+
+        return value
 
     # ... based on this from wikipedia:
 
