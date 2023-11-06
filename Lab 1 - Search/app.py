@@ -179,6 +179,7 @@ class FishingDerbyMinimaxApp(FishingDerbyApp, Fishes, PrintScore2Players, GamesW
         self._cnt_steps = 0
 
     def check_time_threshold(self):
+        print("--- Search time", (self.time_received - self.time_sent)*1000, "ms")
         if self.time_received - self.time_sent > self.settings.time_threshold:
             self.n_timeouts += 1
             if self.n_timeouts >= 3:

@@ -98,42 +98,39 @@ class PlayerControllerMinimax(PlayerController):
     def euclidian(self, hook, fish):
         return np.sqrt(abs(fish[0]-hook[0])**2 + abs(fish[1]-hook[1])**2)
 
-    # ν(A, s) = Score(Green boat) − Score(Red boat) from instructions, idk if or how player id should be accounted for, making player1 score negative makes sense to me
+    # ν(A, s) = Score(Green boat) − Score(Red boat) + tiebreaker, where
+    #   Score() takes fish-on-hook into account and
+    #   tiebreaker is a value in [0, 1) which gives proximity to highest potential (score per distance) fish
     def heuristic(self, node):
-        score0, score1 = node.state.get_player_scores()
-        value = score0 - score1
-
-        # # try heuristic without score
-        # value = 0
-        
-        # try to find smallest distance from fish
-        # dist = []
+        # p1 = player
+        # p2 = opponent
+        p1_score, p2_score = node.state.get_player_scores()
         hooks = node.state.get_hook_positions()
-        scores = node.state.get_fish_scores() #list(node.state.get_fish_scores().values())
+        p1_hook = hooks[0]
+        p2_hook = hooks[1]
+        fish_scores = node.state.get_fish_scores() #list(node.state.get_fish_scores().values())
         fishes = node.state.get_fish_positions()
-        closest = np.inf
-        score = 0
+        value_diff = p1_score - p2_score
+
+        # Consider all fish, see if on either hook, if not then approximate highest potential fish
+        best_fish_value = 0
         for fish in fishes:
             # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
-            distance = self.manhattan(hooks[0], fishes[fish])
-            if distance == 0:
-                value += scores[fish]
-            elif scores[fish] > 0 and (distance < closest or (distance == closest and scores[fish] > score)):
-                closest = distance
-                score = scores[fish]
-        
-        # the metric is "score/distance"
-        value += score/closest
+            p1_distance = self.manhattan(p1_hook, fishes[fish])
+            p2_distance = self.manhattan(p2_hook, fishes[fish])
+            if p1_distance == 0:
+                value_diff += fish_scores[fish]
+            elif p2_distance == 0:
+                value_diff -= fish_scores[fish]
+            elif fish_scores[fish] > 0:
+                fish_value = fish_scores[fish] / p1_distance
+                if fish_value > best_fish_value:
+                    best_fish_value = fish_value
 
-            # if distance > 0:
-            #     dist.append(scores[fish]/distance)
-        # if dist: # "not empty"
-        #     value -= min(dist)
-        
-        # player 1 is evil
-        # if player == 1:
-        #     value *= -1
+        max_fish_value = 15     # Highest score fish at 1 distance + some margin
+        tiebreaker_value = best_fish_value / max_fish_value
 
+        value = value_diff + tiebreaker_value
         # print("heuristic value:", value)
         return value
     
