@@ -6,6 +6,8 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
+from time import time
+
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
         """
@@ -28,6 +30,8 @@ class PlayerControllerMinimax(PlayerController):
 
     def __init__(self):
         super(PlayerControllerMinimax, self).__init__()
+        self.TIME_LIMIT = 0.072
+        self.MAX_DEPTH = 3
 
     def player_loop(self):
         """
@@ -65,17 +69,11 @@ class PlayerControllerMinimax(PlayerController):
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
 
-        DEPTH = 3  # idk what is reasonable
-
-        children = initial_tree_node.compute_and_get_children()
-        moves = []
-        for child in children:
-            moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 0))
-
-        # get index of best move
-        best_move = max(enumerate(moves), key=lambda x: x[1])[0]
-
+        self.previous_time = time()
+        best_move, value, timeout = self.minimax(initial_tree_node, self.MAX_DEPTH, -np.inf, np.inf, 0)
         print("move chosen:", best_move)
+        print("value?", value)
+        print("timeout?", timeout)
 
         # random_move = random.randrange(5)
         return ACTION_TO_STR[best_move]
@@ -125,29 +123,60 @@ class PlayerControllerMinimax(PlayerController):
         # print("heuristic value:", value)
         return value
     
-    def sort_nodes(self, nodes):
-        return sorted(nodes, key=self.heuristic, reverse=True)
+    def sort_nodes(self, nodes, player):
+        return sorted(nodes, key=lambda x: self.minimax(x, 0, -np.inf, np.inf, 1 if player==0 else 0), reverse=player==1)
 
     def minimax(self, node, depth, alpha, beta, player):
-        children = self.sort_nodes(node.compute_and_get_children())
-        if depth == 0 or len(children) == 0:
-            return self.heuristic(node)
-        if player == 0: # maximizing player
-            value = -np.inf
-            for child in children:
-                value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
-                alpha = max(alpha, value)
-                if beta <= alpha:
-                    break
-            return value
-        else: # player 1, minimizing player
-            value = np.inf
-            for child in children:
-                value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
-                beta = min(beta, value)
-                if beta <= alpha:
-                    break
-            return value
+        if time() - self.previous_time > self.TIME_LIMIT:
+            return 0, 0, True
+
+        if depth == 0:
+            return node.move, self.heuristic(node), False
+        
+        children = node.compute_and_get_children()
+        # children = self.sort_nodes(children, player)
+        if len(children) == 0:
+            return node.move, self.heuristic(node), False
+        
+        moves = []
+        for child in children: 
+            if player == 0: # maximizing player
+                value = -np.inf
+                for child in children:
+                    move, temp, timeout = self.minimax(child, depth-1, alpha, beta, 1)
+                    if (depth == self.MAX_DEPTH):
+                        print("move", child.move, "value", temp)
+                    if timeout:
+                        return 0, 0, True
+                    if (temp > value):
+                        moves = []
+                        moves.append(child.move)
+                    elif (temp == value):
+                        moves.append(child.move)
+
+                    value = max(value, temp)
+                    alpha = max(alpha, value)
+                    if beta <= alpha:
+                        break
+            else: # player 1, minimizing player
+                value = np.inf
+                moves = []
+                for child in children:
+                    move, temp, timeout = self.minimax(child, depth-1, alpha, beta, 0)
+                    if timeout:
+                        return 0, 0, True
+                    if (temp < value):
+                        moves = []
+                        moves.append(child.move)
+                    elif (temp == value):
+                        moves.append(child.move)
+                        
+                    value = min(value, temp)
+                    beta = min(beta, value)
+                    if beta <= alpha:
+                        break
+
+        return moves[0], value, False
 
     # ... based on this from wikipedia:
 
