@@ -70,7 +70,8 @@ class PlayerControllerMinimax(PlayerController):
         #       with its compute_and_get_children() method!
 
         self.previous_time = time()
-        best_move, value, timeout = self.minimax(initial_tree_node, self.MAX_DEPTH, -np.inf, np.inf, 0)
+        print("Heuristic:", self.heuristic(initial_tree_node))
+        best_move, value, timeout = self.minimax(initial_tree_node, self.MAX_DEPTH, -np.inf, np.inf)
         print("move chosen:", best_move)
         print("value?", value)
         print("timeout?", timeout)
@@ -102,7 +103,7 @@ class PlayerControllerMinimax(PlayerController):
         value_diff = p1_score - p2_score
 
         # Consider all fish, see if on either hook, if not then approximate highest potential fish
-        best_fish_value = 0
+        closest_fish_distance = np.inf
         for fish in fishes:
             # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
             p1_distance = self.manhattan(p1_hook, fishes[fish])
@@ -111,26 +112,42 @@ class PlayerControllerMinimax(PlayerController):
                 value_diff += fish_scores[fish]
             elif p2_distance == 0:
                 value_diff -= fish_scores[fish]
-            elif fish_scores[fish] > 0:
-                fish_value = fish_scores[fish] / p1_distance
-                if fish_value > best_fish_value:
-                    best_fish_value = fish_value
-
-        max_fish_value = 15     # Highest score fish at 1 distance + some margin
-        tiebreaker_value = best_fish_value / max_fish_value
+            elif fish_scores[fish] > 0 and p1_distance < closest_fish_distance:
+                closest_fish_distance = p1_distance
+        max_fish_distance = 100
+        tiebreaker_value = (max_fish_distance - closest_fish_distance) / max_fish_distance
+        if (closest_fish_distance == np.inf):
+            tiebreaker_value = 0
 
         value = value_diff + tiebreaker_value
         # print("heuristic value:", value)
         return value
     
+    def terminal(self, node):
+        hooks = node.state.get_hook_positions()
+        p1_hook = hooks[0]
+        p2_hook = hooks[1]
+        fish_scores = node.state.get_fish_scores() #list(node.state.get_fish_scores().values())
+        fishes = node.state.get_fish_positions()
+
+        for fish in fishes:
+            p1_distance = self.manhattan(p1_hook, fishes[fish])
+            p2_distance = self.manhattan(p2_hook, fishes[fish])
+            if fish_scores[fish] > 0:
+                if p1_distance != 0 or p2_distance != 0:
+                    return False
+        return True
+
     def sort_nodes(self, nodes, player):
         return sorted(nodes, key=lambda x: self.minimax(x, 0, -np.inf, np.inf, 1 if player==0 else 0), reverse=player==1)
 
-    def minimax(self, node, depth, alpha, beta, player):
+    def minimax(self, node, depth, alpha, beta):
+        player = node.state.get_player()
+
         if time() - self.previous_time > self.TIME_LIMIT:
             return 0, 0, True
 
-        if depth == 0:
+        if depth == 0 or self.terminal(node):
             return node.move, self.heuristic(node), False
         
         children = node.compute_and_get_children()
@@ -139,43 +156,42 @@ class PlayerControllerMinimax(PlayerController):
             return node.move, self.heuristic(node), False
         
         moves = []
-        for child in children: 
-            if player == 0: # maximizing player
-                value = -np.inf
-                for child in children:
-                    move, temp, timeout = self.minimax(child, depth-1, alpha, beta, 1)
-                    if (depth == self.MAX_DEPTH):
-                        print("move", child.move, "value", temp)
-                    if timeout:
-                        return 0, 0, True
-                    if (temp > value):
-                        moves = []
-                        moves.append(child.move)
-                    elif (temp == value):
-                        moves.append(child.move)
+        if player == 0: # maximizing player
+            value = -np.inf
+            for child in children:
+                move, temp, timeout = self.minimax(child, depth-1, alpha, beta)
+                if (depth == self.MAX_DEPTH):
+                    print("move", child.move, "value", temp)
+                if timeout:
+                    return 0, 0, True
+                if (temp > value):
+                    moves = []
+                    moves.append(child.move)
+                elif (temp == value):
+                    moves.append(child.move)
 
-                    value = max(value, temp)
-                    alpha = max(alpha, value)
-                    if beta <= alpha:
-                        break
-            else: # player 1, minimizing player
-                value = np.inf
-                moves = []
-                for child in children:
-                    move, temp, timeout = self.minimax(child, depth-1, alpha, beta, 0)
-                    if timeout:
-                        return 0, 0, True
-                    if (temp < value):
-                        moves = []
-                        moves.append(child.move)
-                    elif (temp == value):
-                        moves.append(child.move)
-                        
-                    value = min(value, temp)
-                    beta = min(beta, value)
-                    if beta <= alpha:
-                        break
-
+                value = max(value, temp)
+                alpha = max(alpha, value)
+                if beta <= alpha:
+                    break
+        else: # player 1, minimizing player
+            value = np.inf
+            moves = []
+            for child in children:
+                move, temp, timeout = self.minimax(child, depth-1, alpha, beta)
+                if timeout:
+                    return 0, 0, True
+                if (temp < value):
+                    moves = []
+                    moves.append(child.move)
+                elif (temp == value):
+                    moves.append(child.move)
+                    
+                value = min(value, temp)
+                beta = min(beta, value)
+                if beta <= alpha:
+                    break
+                
         return moves[0], value, False
 
     # ... based on this from wikipedia:
