@@ -81,7 +81,7 @@ class PlayerControllerMinimax(PlayerController):
         best_move = max(enumerate(moves), key=lambda x: x[1])[0]
         
         # solve it lazily using this, but definitely not ideal XD:
-        if best_move == 0 :
+        if best_move == 0:
             best_move = random.randrange(5)
 
         print("move chosen:", best_move)
@@ -114,12 +114,11 @@ class PlayerControllerMinimax(PlayerController):
         closest = np.inf
         score = 0
         for fish in fishes:
-            print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
+            # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
             distance = self.manhattan(hooks[0], fishes[fish])
             if distance == 0:
                 value += scores[fish]
-                break
-            if scores[fish] > 0 and (distance < closest or (distance == closest and scores[fish] > score)):
+            elif scores[fish] > 0 and (distance < closest or (distance == closest and scores[fish] > score)):
                 closest = distance
                 score = scores[fish]
         
@@ -137,9 +136,12 @@ class PlayerControllerMinimax(PlayerController):
 
         # print("heuristic value:", value)
         return value
+    
+    def sort_nodes(self, nodes):
+        return sorted(nodes, key=self.heuristic, reverse=True)
 
     def minimax(self, node, depth, alpha, beta, player):
-        children = node.compute_and_get_children()
+        children = self.sort_nodes(node.compute_and_get_children())
         if depth == 0 or len(children) == 0:
             return self.heuristic(node)
         if player == 0: # maximizing player
