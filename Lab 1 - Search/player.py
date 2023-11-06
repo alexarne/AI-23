@@ -73,26 +73,7 @@ class PlayerControllerMinimax(PlayerController):
             moves.append(self.minimax(child, DEPTH, -np.inf, np.inf, 0))
 
         # get index of best move
-        # this doesn't (always) work by itself if there are multiple equally good:
-        # best_move = max(enumerate(moves), key=lambda x: x[1])[0]
-
-        # so, only save the best moves in case of multiple with same score
-        best_value = max(moves)
-        best_moves = []
-        for move, value in enumerate(moves):
-            if value > best_value:
-                best_value = value
-                best_moves = []
-            if value >= best_value:
-                best_moves.append(move)
-
-        # debug print
-        for idx, move in enumerate(moves):
-            print("move",idx, "("+ACTION_TO_STR[idx]+") minimax score:", move)
-        print("best_moves =", best_moves)
-
-        # take random move out of best ones
-        best_move = best_moves[random.randrange(len(best_moves))]
+        best_move = max(enumerate(moves), key=lambda x: x[1])[0]
 
         print("move chosen:", best_move)
 
