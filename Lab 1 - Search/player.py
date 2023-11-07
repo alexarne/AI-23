@@ -30,7 +30,7 @@ class PlayerControllerMinimax(PlayerController):
     def __init__(self):
         self.repeated_states = {}
         self.initial_time = time()
-        self.limit = 0.045
+        self.time_limit = 0.015
         super(PlayerControllerMinimax, self).__init__()
 
     def player_loop(self):
@@ -165,14 +165,15 @@ class PlayerControllerMinimax(PlayerController):
         fishes = node.state.get_fish_positions()
         value_diff = p1_score - p2_score
 
+        # closest = np.inf # can be included for alternative final heuristic value, makes it worse in some cases though
+        
         # Consider all fish, see if on either hook, if not then approximate highest potential fish
         best_fish_value = 0
-        closest = np.inf
         for fish in fishes:
             # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"has score:",fish_scores[fish])
             # print("currently best_fish_value =", best_fish_value)
-            p1_distance = self.euclidian(p1_hook, fishes[fish])
-            p2_distance = self.euclidian(p2_hook, fishes[fish])
+            p1_distance = self.manhattan(p1_hook, fishes[fish])
+            p2_distance = self.manhattan(p2_hook, fishes[fish])
             if p1_distance == 0:
                 value_diff += fish_scores[fish]
             elif p2_distance == 0:
@@ -182,15 +183,18 @@ class PlayerControllerMinimax(PlayerController):
                 # print("checking fish_value =", fish_value)
                 if fish_value > best_fish_value:
                     best_fish_value = fish_value
-            if closest > p1_distance:
-                closest = p1_distance
+            
+            # the following makes boat miss the last fish in first test case because it's one move slower to the second-last fish (I think that's why at least):
+            # if closest > p1_distance:
+            #     closest = p1_distance
+        # if closest == np.inf:
+        #     closest = 0
+
         # print("AFTER THE FACT, BEST_FISH_VALUE:", best_fish_value,"AND CLOSEST=",closest)
-        if closest == np.inf:
-            closest = 0
 
         tiebreaker_value = best_fish_value
 
-        value = 5*value_diff + 4*tiebreaker_value - closest
+        value = 5*value_diff + 4*tiebreaker_value # - closest
         # print("heuristic value:", value)
         return value
     
@@ -198,9 +202,9 @@ class PlayerControllerMinimax(PlayerController):
         return sorted(nodes, key=self.heuristic, reverse=True)
 
     def minimax(self, node, depth, alpha, beta, player):
-        move = node.move
+        # move = node.move
 
-        if time() - self.initial_time > self.limit:
+        if time() - self.initial_time > self.time_limit:
             raise TimeoutError
 
         # key = self.hashish(node.state)
@@ -212,28 +216,18 @@ class PlayerControllerMinimax(PlayerController):
             return self.heuristic(node)
         if player == 0: # maximizing player
             value = -np.inf
-            # for child in sorted(children, key=self.heuristic, reverse=False):
-            for child in children:
-                alt_move = self.minimax(child, depth-1, alpha, beta, 1)
-                # if alt_move[1] > value:
-                if alt_move > value:
-                    # move = alt_move
-                    # value = alt_move[1]
-                    value = alt_move
+            for child in sorted(children, key=self.heuristic, reverse=True):
+            # for child in children:
+                value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
                 alpha = max(alpha, value)
                 if beta <= alpha:
                     break
             # return value
         else: # player 1, minimizing player
             value = np.inf
-            # for child in sorted(children, key=self.heuristic, reverse=True):
-            for child in children:
-                alt_move = self.minimax(child, depth-1, alpha, beta, 0)
-                # if alt_move[1] < value:
-                if alt_move < value:
-                    # move = alt_move
-                    # value = alt_move[1]
-                    value = alt_move
+            for child in sorted(children, key=self.heuristic, reverse=False):
+            # for child in children:
+                value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
                 beta = min(beta, value)
                 if beta <= alpha:
                     break
