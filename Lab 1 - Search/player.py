@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import enum
 import random
 import numpy as np
 from time import time
