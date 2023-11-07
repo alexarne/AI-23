@@ -30,7 +30,10 @@ class PlayerControllerMinimax(PlayerController):
     def __init__(self):
         self.repeated_states = {}
         self.initial_time = time()
-        self.time_limit = 0.015
+        # time limit 0.015 is enough to beat all but test_2.json
+        # time limit 0.035 is enough to beat all test cases
+        self.time_limit = 0.060
+        self.max_depth = 8
         super(PlayerControllerMinimax, self).__init__()
 
     def player_loop(self):
@@ -82,9 +85,7 @@ class PlayerControllerMinimax(PlayerController):
         # # get index of best move
         # best_move = max(enumerate(moves), key=lambda x: x[1])[0]
 
-        print("move chosen:", best_move)
-
-        # random_move = random.randrange(5)
+        # print("move chosen:", best_move)
         return ACTION_TO_STR[best_move]
 
     def iterative_deepening(self, initial_tree_node):
@@ -92,19 +93,19 @@ class PlayerControllerMinimax(PlayerController):
         # self.repeated_states = {}
         depth = 1
         best_move = self.run_minimax(initial_tree_node, 1, -np.inf, np.inf)
-        print("depth", depth, "move:", best_move)
+        # print("depth", depth, "move:", best_move)
         depth += 1
-        while depth < 8:
+        while depth < self.max_depth:
             try:
                 alt_move = self.run_minimax(initial_tree_node, depth, -np.inf, np.inf)
-                print("depth", depth, "move:", best_move)
+                # print("depth", depth, "move:", best_move)
                 if alt_move[1] > best_move[1]:
                     best_move = alt_move
                 depth += 1
             except:
-                print("couldn't do depth", depth)
+                # print("couldn't do depth", depth)
                 break
-        print("ITERATIVE RETURN:",best_move)
+        # print("ITERATIVE RETURN:",best_move)
         return best_move[0]
     
     def run_minimax(self, node, depth, alpha, beta):
@@ -113,22 +114,23 @@ class PlayerControllerMinimax(PlayerController):
         for child in children:
             moves.append((child.move, self.minimax(child, depth, alpha, beta, 1)))
         
-        best_value = max(moves)
-        best_moves = []
-        for move, value in enumerate(moves):
-            if value > best_value:
-                best_value = value
-                best_moves = []
-            if value >= best_value:
-                best_moves.append(move)
-        for idx, move in enumerate(moves):
-            print("move",idx, "("+ACTION_TO_STR[idx]+") minimax score:", move)
-        print("best_moves =", best_moves)
+        # # DEBUG PRINT:
+        # best_value = max(moves)
+        # best_moves = []
+        # for move, value in enumerate(moves):
+        #     if value > best_value:
+        #         best_value = value
+        #         best_moves = []
+        #     if value >= best_value:
+        #         best_moves.append(move)
+        # for idx, move in enumerate(moves):
+        #     print("move",idx, "("+ACTION_TO_STR[idx]+") minimax score:", move)
+        # print("best_moves =", best_moves)
 
         # get index of best move
         best_move = max(moves, key=lambda x: x[1])
 
-        print("RETURNING",best_move)
+        # print("RETURNING",best_move)
 
         return best_move
     
@@ -166,7 +168,7 @@ class PlayerControllerMinimax(PlayerController):
         value_diff = p1_score - p2_score
 
         # closest = np.inf # can be included for alternative final heuristic value, makes it worse in some cases though
-        
+
         # Consider all fish, see if on either hook, if not then approximate highest potential fish
         best_fish_value = 0
         for fish in fishes:
