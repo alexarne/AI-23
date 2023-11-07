@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import random
 import numpy as np
 from time import time
 
@@ -7,7 +6,7 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = False
+DEBUG = True
 
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
@@ -80,7 +79,7 @@ class PlayerControllerMinimax(PlayerController):
 
     def iterative_deepening(self, initial_tree_node):
         self.initial_time = time()
-        self.repeated_states = {}
+        # self.repeated_states = {}
         depth = 1
         best_move = self.run_minimax(initial_tree_node, 1, -np.inf, np.inf)
         if DEBUG:
@@ -109,6 +108,8 @@ class PlayerControllerMinimax(PlayerController):
         # get index of best move
         best_move = max(moves, key=lambda x: x[1])
 
+        if DEBUG:
+            print("best move is", best_move)
         return best_move
     
     # Manhattan distance
@@ -162,9 +163,9 @@ class PlayerControllerMinimax(PlayerController):
                 if fish_value > best_fish_value:
                     best_fish_value = fish_value
             
-            # the following makes boat miss the last fish in first test case because it's one move slower to the second-last fish (I think that's why at least):
-            # if closest > p1_distance:
-            #     closest = p1_distance
+        #     # the following makes boat miss the last fish in first test case because it's one move slower to the second-last fish (I think that's why at least):
+        #     if closest > p1_distance:
+        #         closest = p1_distance
         # if closest == np.inf:
         #     closest = 0
 
