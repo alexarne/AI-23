@@ -6,7 +6,7 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = True
+DEBUG = False
 
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
@@ -169,9 +169,9 @@ class PlayerControllerMinimax(PlayerController):
         # if closest == np.inf:
         #     closest = 0
 
-        tiebreaker_value = best_fish_value
+        tiebreaker_value = best_fish_value / 10
 
-        value = 5*value_diff + 4*tiebreaker_value # - closest
+        value = value_diff/9 + tiebreaker_value # - closest
         return value
     
     def sort_nodes(self, nodes):
