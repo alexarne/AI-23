@@ -6,7 +6,7 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = False
+DEBUG = True
 
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
@@ -33,7 +33,7 @@ class PlayerControllerMinimax(PlayerController):
         self.initial_time = time()
         # time limit 0.015 is enough to beat all but test_2.json
         # time limit 0.035 is enough to beat all test cases
-        self.time_limit = 0.055
+        self.time_limit = 0.050
         self.max_depth = 10000
         super(PlayerControllerMinimax, self).__init__()
 
@@ -113,9 +113,26 @@ class PlayerControllerMinimax(PlayerController):
         return best_move
     
     # Manhattan distance
-    def manhattan(self, hook, fish):
-        x = abs(fish[0]-hook[0])
-        return min(x, 20-x) + abs(fish[1]-hook[1])
+    def manhattan(self, hook, fish, enemyHook):
+        # return abs(hook[0]-fish[0])+abs(fish[1]-hook[1])
+        fd = hook[0]-fish[0]        # fish-delta
+        hd = hook[0]-enemyHook[0]   # hook-delta
+        yd = abs(fish[1]-hook[1])
+
+        # Go left or right depending on if enemy is blocking
+        xStraight = abs(fd)
+        xWrapped = 20-abs(fd)
+        if (fd*hd >= 0):    # Fish on same side as enemy hook
+            # Check if enemy hook is closer on right side
+            if (abs(hd) < abs(fd)):
+                return xWrapped + yd
+            if (abs(hd) > abs(fd)):
+                return xStraight + yd
+            # Fish is on top of enemy boat, unreachable
+            return 99
+            
+        # Fish and enemy hook on opposite sides
+        return xStraight + yd
 
     # Euclidian distance
     def euclidian(self, hook, fish):
@@ -145,37 +162,32 @@ class PlayerControllerMinimax(PlayerController):
         fishes = node.state.get_fish_positions()
         value_diff = p1_score - p2_score
 
-        # closest = np.inf # can be included for alternative final heuristic value, makes it worse in some cases though
-
         # Consider all fish, see if on either hook, if not then approximate highest potential fish
-        best_fish_value = 0
+        MAX_FISH_DISTANCE = 100
+        MAX_FISH_SCORE = 20
+        best_value = 0
+
         for fish in fishes:
-            # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"has score:",fish_scores[fish])
-            # print("currently best_fish_value =", best_fish_value)
-            p1_distance = self.manhattan(p1_hook, fishes[fish])
-            p2_distance = self.manhattan(p2_hook, fishes[fish])
+            # print("fish pos:",fishes[fish][0],",",fishes[fish][1],"fish score:",scores[fish])
+            p1_distance = self.manhattan(p1_hook, fishes[fish], p2_hook)
+            p2_distance = self.manhattan(p2_hook, fishes[fish], p1_hook)
             if p1_distance == 0:
                 value_diff += fish_scores[fish]
             elif p2_distance == 0:
                 value_diff -= fish_scores[fish]
-            elif fish_scores[fish] > 0:
-                fish_value = fish_scores[fish] / (p1_distance+0.01)
-                if fish_value > best_fish_value:
-                    best_fish_value = fish_value
-            
-        #     # the following makes boat miss the last fish in first test case because it's one move slower to the second-last fish (I think that's why at least):
-        #     if closest > p1_distance:
-        #         closest = p1_distance
-        # if closest == np.inf:
-        #     closest = 0
+            else:
+                curr_value = (fish_scores[fish]) * (MAX_FISH_DISTANCE - p1_distance) / MAX_FISH_DISTANCE
+                if (curr_value > best_value):
+                    best_value = curr_value
+        tiebreaker_value = best_value
 
-        tiebreaker_value = best_fish_value / 10
-
-        value = value_diff/9 + tiebreaker_value # - closest
+        value = value_diff + tiebreaker_value
+        # print("heuristic value:", value)
         return value
     
-    def sort_nodes(self, nodes):
-        return sorted(nodes, key=self.heuristic, reverse=True)
+    def sort_nodes(self, nodes, reverse):
+        return nodes
+        # return sorted(nodes, key=self.heuristic, reverse=reverse)
 
     def minimax(self, node, depth, alpha, beta, player):
 
@@ -193,14 +205,14 @@ class PlayerControllerMinimax(PlayerController):
             return self.heuristic(node)
         if player == 0: # maximizing player
             value = -np.inf
-            for child in sorted(children, key=self.heuristic, reverse=True):
+            for child in self.sort_nodes(children, reverse=True):
                 value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
                 alpha = max(alpha, value)
                 if beta <= alpha:
                     break
         else: # player 1, minimizing player
             value = np.inf
-            for child in sorted(children, key=self.heuristic, reverse=False):
+            for child in self.sort_nodes(children, reverse=False):
                 value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
                 beta = min(beta, value)
                 if beta <= alpha:
