@@ -175,7 +175,7 @@ class PlayerControllerMinimax(PlayerController):
 
 	# ν(A, s) = Score(Green boat) − Score(Red boat) + tiebreaker, where
 	#   Score() takes fish-on-hook into account and
-	#   tiebreaker is a value in [0, 1) which gives proximity to highest potential (score per distance) fish
+	#   tiebreaker is the proximity to highest potential (score per distance) fish
 	def heuristic(self, node):
 		# p1 = player
 		# p2 = opponent
@@ -187,10 +187,8 @@ class PlayerControllerMinimax(PlayerController):
 		fishes = node.state.get_fish_positions()
 		value_diff = p1_score - p2_score
 
-		MAX_FISH_DIST = 40
-		MAX_FISH_SCORE = 15
-
 		# Consider all fish, see if on either hook, if not then approximate highest potential fish
+		MAX_FISH_DIST = 40
 		best_fish_value = 0
 		for fish in fishes:
 			p1_distance = self.manhattan(p1_hook, fishes[fish], p2_hook)
@@ -200,16 +198,16 @@ class PlayerControllerMinimax(PlayerController):
 			elif p2_distance == 0:
 				value_diff -= fish_scores[fish]
 			elif fish_scores[fish] > 0:
+				# fish_value = self.manhattan(p1_hook, fishes[fish], p2_hook) - self.manhattan(p2_hook, fishes[fish], p1_hook)
 				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
 					
-		tiebreaker_value = best_fish_value
-		value = value_diff + tiebreaker_value
+		value = value_diff + best_fish_value
 		return value
 	
-	def sort_nodes(self, nodes):
-		return sorted(nodes, key=self.heuristic, reverse=True)
+	def sort_nodes(self, nodes, reverse):
+		return sorted(nodes, key=self.heuristic, reverse=reverse)
 
 	def minimax(self, node, depth, alpha, beta, player):
 
@@ -232,7 +230,7 @@ class PlayerControllerMinimax(PlayerController):
 		if player == 0: # maximizing player
 			value = -np.inf
 			# for child in children:
-			for child in sorted(children, key=self.heuristic, reverse=True):
+			for child in self.sort_nodes(children, reverse=True):
 				value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
 				alpha = max(alpha, value)
 				if beta <= alpha:
@@ -240,7 +238,7 @@ class PlayerControllerMinimax(PlayerController):
 		else: # player 1, minimizing player
 			value = np.inf
 			# for child in children:
-			for child in sorted(children, key=self.heuristic, reverse=False):
+			for child in self.sort_nodes(children, reverse=False):
 				value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
 				beta = min(beta, value)
 				if beta <= alpha:
