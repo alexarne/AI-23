@@ -6,7 +6,7 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = True
+DEBUG = False
 
 class PlayerControllerHuman(PlayerController):
     def player_loop(self):
