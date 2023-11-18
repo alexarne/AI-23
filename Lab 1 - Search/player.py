@@ -6,7 +6,7 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = True
+DEBUG = False
 REPEATING_STATES = True
 
 class PlayerControllerHuman(PlayerController):
@@ -189,7 +189,7 @@ class PlayerControllerMinimax(PlayerController):
 
 		# closest = np.inf # can be included for alternative final heuristic value, makes it worse in some cases though
 
-		MAX_FISH_DIST = 100
+		MAX_FISH_DIST = 40
 		MAX_FISH_SCORE = 15
 
 		# Consider all fish, see if on either hook, if not then approximate highest potential fish
@@ -206,7 +206,7 @@ class PlayerControllerMinimax(PlayerController):
 			elif fish_scores[fish] > 0:
 			# else:
 				# fish_value = self.manhattan(p1_hook, fishes[fish], p2_hook) - self.manhattan(p2_hook, fishes[fish], p1_hook)
-				fish_value = (fish_scores[fish] / MAX_FISH_SCORE) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
+				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
 		# if best_fish_value == -np.inf:
