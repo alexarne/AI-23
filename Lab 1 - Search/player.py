@@ -141,37 +141,22 @@ class PlayerControllerMinimax(PlayerController):
 		# Fish and enemy hook on opposite sides
 		return xStraight + yd
 
-	# Score based on Manhattan distance to closest fish
-	def manhattan_score(self, state, player):
-		# return abs(hook[0]-fish[0])+abs(fish[1]-hook[1])
-		hooks = state.get_hook_positions()
-		hook = hooks[player]
-		enemyHook = hooks[1-player]
-		best_fish = -np.inf
-		fishes = state.get_fish_positions()
-		fish_scores = state.get_fish_scores()
-		for fish in fishes:
-			enemyDist = self.manhattan(enemyHook, fishes[fish], hook)
-			if enemyDist == 0: # if fish already caught by enemy
-				continue
-			dist = self.manhattan(hook, fishes[fish], enemyHook)
-			fish_score = fish_scores[fish]
-			best_fish = max(best_fish, fish_score * (1/max(dist, 1)))
-		return best_fish
-
 	# Euclidian distance
 	def euclidian(self, hook, fish):
 		x = abs(fish[0]-hook[0])
 		return np.sqrt((min(x, 20-x))**2 + abs(fish[1]-hook[1])**2)
 
-	def hashish(self, state):
+	def hashish(self, state, depth):
 		h = ""
+		h += str(depth)+":"
+		p1_score, p2_score = state.get_player_scores()
+		h += str(p1_score)+"-"+str(p2_score)+":"
 		hooks = state.get_hook_positions()
 		h += str(hooks[0])+str(hooks[1])
 		fishes = state.get_fish_positions()
 		fish_scores = state.get_fish_scores()
-		for idx, fish in enumerate(fishes):
-			h += str(idx)+str(fishes[fish])+str(fish_scores[fish])
+		for fish in fishes:
+			h += ";"+str(fishes[fish])+str(fish_scores[fish])
 		return h.replace(" ","")
 
 	# ν(A, s) = Score(Green boat) − Score(Red boat) + tiebreaker, where
@@ -200,7 +185,7 @@ class PlayerControllerMinimax(PlayerController):
 				value_diff -= fish_scores[fish]
 			elif fish_scores[fish] > 0:
 				# fish_value = self.manhattan(p1_hook, fishes[fish], p2_hook) - self.manhattan(p2_hook, fishes[fish], p1_hook)
-				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
+				fish_value = (fish_scores[fish]/15) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
 
@@ -216,13 +201,13 @@ class PlayerControllerMinimax(PlayerController):
 			raise TimeoutError
 
 		if REPEATING_STATES:
-			key = self.hashish(node.state)
+			key = self.hashish(node.state, depth)
 			if REP_DEBUG:
 				print("key:", key)
 			if key in self.repeated_states and depth <= self.repeated_states[key][0]:
 				if REP_DEBUG:
 					print("repeating states avoided")
-				self.repeated_states[key] = [depth, self.repeated_states[key][1]]
+				self.repeated_states[key] = (depth, self.repeated_states[key][1])
 				return self.repeated_states[key][1]
 
 		children = node.compute_and_get_children()
@@ -249,8 +234,8 @@ class PlayerControllerMinimax(PlayerController):
 			if REP_DEBUG:
 				print("new state found")
 			if key not in self.repeated_states:
-				self.repeated_states[key] = [depth, value]
+				self.repeated_states[key] = (depth, value)
 			elif self.repeated_states[key][1] < value or (self.repeated_states[key][1] == value and self.repeated_states[key][0] > depth):
-				self.repeated_states[key] = [depth, value]
+				self.repeated_states[key] = (depth, value)
 
 		return value
