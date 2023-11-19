@@ -33,8 +33,6 @@ class PlayerControllerMinimax(PlayerController):
 	def __init__(self):
 		self.repeated_states = {}
 		self.initial_time = time()
-		# time limit 0.015 is enough to beat all but test_2.json
-		# time limit 0.035 is enough to beat all test cases
 		self.time_limit = 0.055
 		self.max_depth = 10000
 		super(PlayerControllerMinimax, self).__init__()
@@ -148,7 +146,7 @@ class PlayerControllerMinimax(PlayerController):
 
 	def hashish(self, state, depth):
 		h = ""
-		h += str(depth)+":"
+		h += str(depth)+"XD"
 		p1_score, p2_score = state.get_player_scores()
 		h += str(p1_score)+"-"+str(p2_score)+":"
 		hooks = state.get_hook_positions()
@@ -185,7 +183,7 @@ class PlayerControllerMinimax(PlayerController):
 				value_diff -= fish_scores[fish]
 			elif fish_scores[fish] > 0:
 				# fish_value = self.manhattan(p1_hook, fishes[fish], p2_hook) - self.manhattan(p2_hook, fishes[fish], p1_hook)
-				fish_value = (fish_scores[fish]/15) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
+				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
 
