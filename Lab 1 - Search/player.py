@@ -8,6 +8,7 @@ from fishing_game_core.shared import ACTION_TO_STR
 
 DEBUG = False
 REPEATING_STATES = True
+REP_DEBUG = False
 
 class PlayerControllerHuman(PlayerController):
 	def player_loop(self):
@@ -88,11 +89,13 @@ class PlayerControllerMinimax(PlayerController):
 		depth += 1
 		while depth < self.max_depth:
 			try:
+				if DEBUG:
+					print("DEPTH", depth)
 				alt_move = self.run_minimax(initial_tree_node, depth, -np.inf, np.inf)
 				if DEBUG:
 					print("depth", depth, "move:", best_move)
-				if alt_move[1] > best_move[1]:
-					best_move = alt_move
+				# if alt_move[1] > best_move[1]:
+				best_move = alt_move
 				depth += 1
 			except:
 				if DEBUG:
@@ -105,12 +108,12 @@ class PlayerControllerMinimax(PlayerController):
 		moves = []
 		for child in children:
 			val = self.minimax(child, depth, alpha, beta, 1)
-			moves.append((child.move, val))
-			# if DEBUG:
-			# 	print("move", child.move, "value:", val)
+			moves.append((child.move, val, self.heuristic(child)))
+			if DEBUG:
+				print("move", child.move, "value:", val)
 
 		# get index of best move
-		best_move = max(moves, key=lambda x: x[1])
+		best_move = max(moves, key=lambda x: (x[1], x[2]))
 
 		if DEBUG:
 			print("best move is", best_move)
@@ -163,8 +166,6 @@ class PlayerControllerMinimax(PlayerController):
 
 	def hashish(self, state):
 		h = ""
-		# p1_score, p2_score = state.get_player_scores()
-		# h += str(p1_score)+"-"+str(p2_score)+";"
 		hooks = state.get_hook_positions()
 		h += str(hooks[0])+str(hooks[1])
 		fishes = state.get_fish_positions()
@@ -183,7 +184,7 @@ class PlayerControllerMinimax(PlayerController):
 		hooks = node.state.get_hook_positions()
 		p1_hook = hooks[0]
 		p2_hook = hooks[1]
-		fish_scores = node.state.get_fish_scores() #list(node.state.get_fish_scores().values())
+		fish_scores = node.state.get_fish_scores()
 		fishes = node.state.get_fish_positions()
 		value_diff = p1_score - p2_score
 
@@ -202,7 +203,7 @@ class PlayerControllerMinimax(PlayerController):
 				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
-					
+
 		value = value_diff + best_fish_value
 		return value
 	
@@ -216,10 +217,10 @@ class PlayerControllerMinimax(PlayerController):
 
 		if REPEATING_STATES:
 			key = self.hashish(node.state)
-			if DEBUG:
+			if REP_DEBUG:
 				print("key:", key)
 			if key in self.repeated_states and depth <= self.repeated_states[key][0]:
-				if DEBUG:
+				if REP_DEBUG:
 					print("repeating states avoided")
 				self.repeated_states[key] = [depth, self.repeated_states[key][1]]
 				return self.repeated_states[key][1]
@@ -245,7 +246,7 @@ class PlayerControllerMinimax(PlayerController):
 					break
 
 		if REPEATING_STATES:
-			if DEBUG:
+			if REP_DEBUG:
 				print("new state found")
 			if key not in self.repeated_states:
 				self.repeated_states[key] = [depth, value]
