@@ -110,7 +110,7 @@ class PlayerControllerMinimax(PlayerController):
 			if DEBUG:
 				print("move", child.move, "value:", val)
 
-		# get index of best move
+		# get index of best move, take best local heuristic value if there is a tie
 		best_move = max(moves, key=lambda x: (x[1], x[2]))
 
 		if DEBUG:
