@@ -6,10 +6,6 @@ from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
 from fishing_game_core.shared import ACTION_TO_STR
 
-DEBUG = False
-REPEATING_STATES = True
-REP_DEBUG = False
-
 class PlayerControllerHuman(PlayerController):
 	def player_loop(self):
 		"""
@@ -76,87 +72,60 @@ class PlayerControllerMinimax(PlayerController):
 		best_move = self.iterative_deepening(initial_tree_node)
 
 		return ACTION_TO_STR[best_move]
-
-	def iterative_deepening(self, initial_tree_node):
-		self.initial_time = time()
-		self.repeated_states = {}
-		depth = 1
-		best_move = self.run_minimax(initial_tree_node, 1, -np.inf, np.inf)
-		if DEBUG:
-			print("depth", depth, "move:", best_move)
-		depth += 1
-		while depth < self.max_depth:
-			try:
-				if DEBUG:
-					print("DEPTH", depth)
-				alt_move = self.run_minimax(initial_tree_node, depth, -np.inf, np.inf)
-				if DEBUG:
-					print("depth", depth, "move:", best_move)
-				# if alt_move[1] > best_move[1]:
-				best_move = alt_move
-				depth += 1
-			except:
-				if DEBUG:
-					print("couldn't do depth", depth)
-				break
-		return best_move[0]
 	
+# -------------------- MINIMAX --------------------
 	def run_minimax(self, node, depth, alpha, beta):
 		children = node.compute_and_get_children()
 		moves = []
 		for child in children:
 			val = self.minimax(child, depth, alpha, beta, 1)
 			moves.append((child.move, val, self.heuristic(child)))
-			if DEBUG:
-				print("move", child.move, "value:", val)
 
-		# get index of best move
+		# get index of best move, primarily sort by minimax value and tiebreak using immediate heuristic value
 		best_move = max(moves, key=lambda x: (x[1], x[2]))
 
-		if DEBUG:
-			print("best move is", best_move)
 		return best_move
-	
-	# Manhattan distance
-	def manhattan(self, hook, fish, enemyHook):
-		# return abs(hook[0]-fish[0])+abs(fish[1]-hook[1])
-		fd = hook[0]-fish[0]        # fish-delta
-		hd = hook[0]-enemyHook[0]   # hook-delta
-		yd = abs(fish[1]-hook[1])
 
-		# Go left or right depending on if enemy is blocking
-		xStraight = abs(fd)
-		xWrapped = 20-abs(fd)
-		if (fd*hd >= 0):    # Fish on same side as enemy hook
-			# Check if enemy hook is closer on right side
-			if (abs(hd) < abs(fd)):
-				return xWrapped + yd
-			if (abs(hd) > abs(fd)):
-				return xStraight + yd
-			# Fish is on top of enemy boat, unreachable
-			return 99
-			
-		# Fish and enemy hook on opposite sides
-		return xStraight + yd
+	def minimax(self, node, depth, alpha, beta, player):
+		# iterative deepening timeout	
+		if time() - self.initial_time > self.time_limit:
+			raise TimeoutError
 
-	# Euclidian distance
-	def euclidian(self, hook, fish):
-		x = abs(fish[0]-hook[0])
-		return np.sqrt((min(x, 20-x))**2 + abs(fish[1]-hook[1])**2)
+		# -------------------- REPEATED STATES CHECKING --------------------
+		key = self.hashish(node.state)
+		if key in self.repeated_states and depth <= self.repeated_states[key][0]:
+			self.repeated_states[key] = (depth, self.repeated_states[key][1])
+			return self.repeated_states[key][1]
 
-	def hashish(self, state, depth):
-		h = ""
-		h += str(depth)+"XD"
-		p1_score, p2_score = state.get_player_scores()
-		h += str(p1_score)+"-"+str(p2_score)+":"
-		hooks = state.get_hook_positions()
-		h += str(hooks[0])+str(hooks[1])
-		fishes = state.get_fish_positions()
-		fish_scores = state.get_fish_scores()
-		for fish in fishes:
-			h += ";"+str(fishes[fish])+str(fish_scores[fish])
-		return h.replace(" ","")
+		# -------------------- MINIMAX ALGORITHM --------------------
+		children = node.compute_and_get_children()
+		p0caught, p1caught = node.state.get_caught()
+		if depth == 0 or (len(children) == 1 and (p0caught or p1caught)) or len(children) == 0:
+			return self.quiet_search(node, 2, player)
+		if player == 0: # maximizing player
+			value = -np.inf
+			for child in self.sort_nodes(children, reverse=True):
+				value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
+				alpha = max(alpha, value)
+				if beta <= alpha:
+					break
+		else: # player 1, minimizing player
+			value = np.inf
+			for child in self.sort_nodes(children, reverse=False):
+				value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
+				beta = min(beta, value)
+				if beta <= alpha:
+					break
 
+		# -------------------- REPEATED STATES INSERTION --------------------
+		if key not in self.repeated_states:
+			self.repeated_states[key] = (depth, value)
+		elif self.repeated_states[key][1] < value or (self.repeated_states[key][1] == value and self.repeated_states[key][0] > depth):
+			self.repeated_states[key] = (depth, value)
+
+		return value
+
+# -------------------- HEURISTIC --------------------
 	# ν(A, s) = Score(Green boat) − Score(Red boat) + tiebreaker, where
 	#   Score() takes fish-on-hook into account and
 	#   tiebreaker is the proximity to highest potential (score per distance) fish
@@ -182,58 +151,94 @@ class PlayerControllerMinimax(PlayerController):
 			elif p2_distance == 0:
 				value_diff -= fish_scores[fish]
 			elif fish_scores[fish] > 0:
-				# fish_value = self.manhattan(p1_hook, fishes[fish], p2_hook) - self.manhattan(p2_hook, fishes[fish], p1_hook)
-				fish_value = (fish_scores[fish]) * ((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
+				fish_value = (fish_scores[fish])*((MAX_FISH_DIST - p1_distance) / MAX_FISH_DIST)
 				if fish_value > best_fish_value:
 					best_fish_value = fish_value
-
 		value = value_diff + best_fish_value
 		return value
-	
+
+	# Manhattan distance
+	def manhattan(self, hook, fish, enemyHook):
+		fd = hook[0]-fish[0]        # fish-delta
+		hd = hook[0]-enemyHook[0]   # hook-delta
+		yd = abs(fish[1]-hook[1])
+
+		# Go left or right depending on if enemy is blocking
+		xStraight = abs(fd)
+		xWrapped = 20-abs(fd)
+		if (fd*hd >= 0):    # Fish on same side as enemy hook
+			# Check if enemy hook is closer on right side
+			if (abs(hd) < abs(fd)):
+				return xWrapped + yd
+			if (abs(hd) > abs(fd)):
+				return xStraight + yd
+			# Fish is on top of enemy boat, unreachable
+			return 99
+			
+		# Fish and enemy hook on opposite sides
+		return xStraight + yd
+
+	# Euclidian distance
+	def euclidian(self, hook, fish):
+		x = abs(fish[0]-hook[0])
+		return np.sqrt((min(x, 20-x))**2 + abs(fish[1]-hook[1])**2)
+
+# -------------------- OPTIMIZATIONS BELOW --------------------
+
+# -------------------- MOVE ORDERING --------------------
 	def sort_nodes(self, nodes, reverse):
 		return sorted(nodes, key=self.heuristic, reverse=reverse)
 
-	def minimax(self, node, depth, alpha, beta, player):
+# -------------------- ITERATIVE DEEPENING --------------------
+	def iterative_deepening(self, initial_tree_node):
+		self.initial_time = time()
+		self.repeated_states = {}
+		depth = 1
+		best_move = self.run_minimax(initial_tree_node, 1, -np.inf, np.inf)
 
-		if time() - self.initial_time > self.time_limit:
-			raise TimeoutError
+		depth += 1
+		while depth < self.max_depth:
+			try:
+				best_move = self.run_minimax(initial_tree_node, depth, -np.inf, np.inf)
+				depth += 1
+			except:
+				break
+		return best_move[0]
 
-		if REPEATING_STATES:
-			key = self.hashish(node.state, depth)
-			if REP_DEBUG:
-				print("key:", key)
-			if key in self.repeated_states and depth <= self.repeated_states[key][0]:
-				if REP_DEBUG:
-					print("repeating states avoided")
-				self.repeated_states[key] = (depth, self.repeated_states[key][1])
-				return self.repeated_states[key][1]
+# -------------------- REPEATED STATES HASH FUNCTION --------------------
+	def hashish(self, state):
+		h = ""
+		hooks = state.get_hook_positions()
+		h += str(hooks[0])+str(hooks[1])
+		fishes = state.get_fish_positions()
+		fish_scores = state.get_fish_scores()
+		for fish in fishes:
+			h += ";"+str(fishes[fish])+str(fish_scores[fish])
+		return h.replace(" ","")
 
+# -------------------- QUISSENCE SEARCH --------------------
+	def get_capturing_children(self, node):
 		children = node.compute_and_get_children()
-		if depth == 0 or len(children) == 0:
+		p0caught1, p1caught1 = node.state.get_caught()
+		capture_children = []
+		for child in children:
+			p0caught2, p1caught2 = node.state.get_caught()
+			if (p0caught1 != p0caught2 or p1caught1 != p1caught2):
+				capture_children.append(child)
+		return capture_children
+
+	def quiet(self, node):
+		return len(self.get_capturing_children(node)) == 0
+	
+	def quiet_search(self, node, depth, player):
+		if self.quiet(node) or depth == 0:
 			return self.heuristic(node)
-		if player == 0: # maximizing player
-			value = -np.inf
-			# for child in children:
-			for child in self.sort_nodes(children, reverse=True):
-				value = max(value, self.minimax(child, depth-1, alpha, beta, 1))
-				alpha = max(alpha, value)
-				if beta <= alpha:
-					break
-		else: # player 1, minimizing player
-			value = np.inf
-			# for child in children:
-			for child in self.sort_nodes(children, reverse=False):
-				value = min(value, self.minimax(child, depth-1, alpha, beta, 0))
-				beta = min(beta, value)
-				if beta <= alpha:
-					break
-
-		if REPEATING_STATES:
-			if REP_DEBUG:
-				print("new state found")
-			if key not in self.repeated_states:
-				self.repeated_states[key] = (depth, value)
-			elif self.repeated_states[key][1] < value or (self.repeated_states[key][1] == value and self.repeated_states[key][0] > depth):
-				self.repeated_states[key] = (depth, value)
-
+		
+		children = self.get_capturing_children(node)
+		value = self.quiet_search(children[0], depth-1, 1-player)
+		for child in children[1:]:
+			if player == 1:
+				value = max(value, self.quiet_search(child, depth-1, 0))
+			elif player == 0:
+				value = min(value, self.quiet_search(child, depth-1, 1))
 		return value
