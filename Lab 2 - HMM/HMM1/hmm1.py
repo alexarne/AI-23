@@ -28,17 +28,5 @@ def forward(A, B, pi, sequence):
             alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][sequence[t]]
     return sum(alpha[-1])
 
-    # p = 1.0
-    # N = A.shape[0] # num states
-    # alpha = np.matrix(np.zeros((len(sequence), N)))
-    # alpha[0, 0] = pi * B[:, sequence[0]]
-    # for t in range(1, len(sequence)):
-    #     probability = 0.0
-    #     for i in range(N):
-    #         alpha[t, i] = alpha[t-1].dot(A[:, i]) * B[i, sequence[t]]
-    #         probability += alpha[t, i]
-    #     p *= probability
-    # return alpha[-1].sum()
-
 sequence = list(map(int,input().split()))
 print(forward(A, B, pi, sequence[1:]))
