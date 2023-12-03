@@ -30,10 +30,7 @@ def forward(A, B, pi, emissions):
 # pi - Initial state vector
 # emissions - Sequence of observations
 # Returns - New estimated transition matrix, emissions matrix, and initial state vector
-DEBUG = False
 def estimate_model(A, B, pi, emissions):
-    if DEBUG:
-        print("estimating -------------")
     N = len(A)          # num states
     T = len(emissions)  # num observations
 
@@ -42,14 +39,6 @@ def estimate_model(A, B, pi, emissions):
     MAX_ITER = 100
     iter = 0
     while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
-        if DEBUG:
-            print("new pass----------")
-        if DEBUG:
-            print("A:", A)
-        if DEBUG:
-            print("B:", B)
-        if DEBUG:
-            print("pi:", pi)
         oldLogProb = logProb
         # Compute all (with alpha and beta normalized)
         norm = [1 for _ in range(T)]
@@ -57,26 +46,22 @@ def estimate_model(A, B, pi, emissions):
         # --------- alpha (normalized) ---------
         alpha = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
         alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
-        norm[0] = sum(alpha[0])
-        alpha[0] = [pi[0][i] * B[i][emissions[0]] / (norm[0]+EPSILON) for i in range(N)]
+        norm[0] = sum(alpha[0]) + EPSILON
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] / norm[0] for i in range(N)]
         for t in range(1, T):
             for i in range(N):
                 alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
-            norm[t] = sum(alpha[t])
-            if DEBUG:
-                print("norm", norm[t])
-            if DEBUG:
-                print("alpha", alpha)
-            alpha[t] = [alpha[t][i] / (norm[t]+EPSILON) for i in range(N)]
+            norm[t] = sum(alpha[t]) + EPSILON
+            alpha[t] = [alpha[t][i] / norm[t] for i in range(N)]
 
 
         # --------- beta (normalized) ---------
         beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
-        beta[-1] = [1 / (norm[-1]+EPSILON) for _ in range(N)]
+        beta[-1] = [1 / norm[-1] for _ in range(N)]
         for t in range(T-2, -1, -1):
             for i in range(N):
                 beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
-                beta[t][i] = beta[t][i] / (norm[t]+EPSILON)
+                beta[t][i] = beta[t][i] / norm[t]
 
         # --------- di-gamma ---------
         # Doesn't need normalization because alpha & beta are normalized
@@ -88,8 +73,7 @@ def estimate_model(A, B, pi, emissions):
         
         # --------- gamma ---------
         g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
-        if DEBUG:
-            print(g)
+        
         # Re-estimate A, B, pi
         A = [[sum([dg[t][i][j] for t in range(T-1)]) / (sum([g[t][i] for t in range(T-1)])+EPSILON)
             for j in range(len(A[0]))] 
@@ -99,11 +83,8 @@ def estimate_model(A, B, pi, emissions):
             for j in range(len(B))]
         pi = [g[0]]
 
-        if DEBUG:
-            print("NORM:", norm)
-
         # Repeat until convergence
-        logProb = sum([math.log(norm[i]+EPSILON) for i in range(len(norm))])
+        logProb = sum([math.log(norm[i]) for i in range(len(norm))])
 
     return A, B, pi
 
@@ -176,9 +157,6 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         :param true_type: the correct type of the fish
         :return:
         """
-
-        if DEBUG:
-            print("On fish", fish_id, "guessed", correct)
 
         # Tweak the model based on the observations for that fish
         A, B, pi = self.models[true_type]
