@@ -30,8 +30,10 @@ def forward(A, B, pi, emissions):
 # pi - Initial state vector
 # emissions - Sequence of observations
 # Returns - New estimated transition matrix, emissions matrix, and initial state vector
+DEBUG = False
 def estimate_model(A, B, pi, emissions):
-    print("estimating -------------")
+    if DEBUG:
+        print("estimating -------------")
     N = len(A)          # num states
     T = len(emissions)  # num observations
 
@@ -40,10 +42,14 @@ def estimate_model(A, B, pi, emissions):
     MAX_ITER = 100
     iter = 0
     while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
-        print("new pass----------")
-        print("A:", A)
-        print("B:", B)
-        print("pi:", pi)
+        if DEBUG:
+            print("new pass----------")
+        if DEBUG:
+            print("A:", A)
+        if DEBUG:
+            print("B:", B)
+        if DEBUG:
+            print("pi:", pi)
         oldLogProb = logProb
         # Compute all (with alpha and beta normalized)
         norm = [1 for _ in range(T)]
@@ -57,8 +63,10 @@ def estimate_model(A, B, pi, emissions):
             for i in range(N):
                 alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
             norm[t] = sum(alpha[t])
-            print("norm", norm[t])
-            print("alpha", alpha)
+            if DEBUG:
+                print("norm", norm[t])
+            if DEBUG:
+                print("alpha", alpha)
             alpha[t] = [alpha[t][i] / (norm[t]+EPSILON) for i in range(N)]
 
 
@@ -80,7 +88,8 @@ def estimate_model(A, B, pi, emissions):
         
         # --------- gamma ---------
         g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
-        print(g)
+        if DEBUG:
+            print(g)
         # Re-estimate A, B, pi
         A = [[sum([dg[t][i][j] for t in range(T-1)]) / (sum([g[t][i] for t in range(T-1)])+EPSILON)
             for j in range(len(A[0]))] 
@@ -90,7 +99,8 @@ def estimate_model(A, B, pi, emissions):
             for j in range(len(B))]
         pi = [g[0]]
 
-        print("NORM:", norm)
+        if DEBUG:
+            print("NORM:", norm)
 
         # Repeat until convergence
         logProb = sum([math.log(norm[i]+EPSILON) for i in range(len(norm))])
@@ -115,9 +125,10 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         self.guesses = 0
 
         # Models stored A, B, pi
-        self.models = [(init_matrix(1, 1),
-                        init_matrix(1, N_EMISSIONS),
-                        init_matrix(1, 1)) 
+        N = 1
+        self.models = [(init_matrix(N, N),
+                        init_matrix(N, N_EMISSIONS), # N_EMISSIONS = K
+                        init_matrix(N, N)) 
                         for _ in range(N_SPECIES)]
 
         pass
@@ -137,7 +148,7 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
             self.obs[i].append(observations[i])
 
         # Only start guessing when we have to
-        if (step < 5):
+        if (step <= N_STEPS-N_FISH):
             return None
         
         # Guess fish in order
@@ -166,7 +177,8 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         :return:
         """
 
-        print("On fish", fish_id, "guessed", correct)
+        if DEBUG:
+            print("On fish", fish_id, "guessed", correct)
 
         # Tweak the model based on the observations for that fish
         A, B, pi = self.models[true_type]
