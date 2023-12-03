@@ -5,7 +5,7 @@ from constants import *
 import random
 import math
 import sys
-EPSILON = sys.float_info.epsilon
+EPSILON = sys.float_info.epsilon # to avoid division by zero or logarithm of zero
 
 
 
@@ -30,10 +30,7 @@ def forward(A, B, pi, emissions):
 # pi - Initial state vector
 # emissions - Sequence of observations
 # Returns - New estimated transition matrix, emissions matrix, and initial state vector
-DEBUG = False
 def estimate_model(A, B, pi, emissions):
-    if DEBUG:
-        print("estimating -------------")
     N = len(A)          # num states
     T = len(emissions)  # num observations
 
@@ -42,14 +39,6 @@ def estimate_model(A, B, pi, emissions):
     MAX_ITER = 100
     iter = 0
     while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
-        if DEBUG:
-            print("new pass----------")
-        if DEBUG:
-            print("A:", A)
-        if DEBUG:
-            print("B:", B)
-        if DEBUG:
-            print("pi:", pi)
         oldLogProb = logProb
         # Compute all (with alpha and beta normalized)
         norm = [1 for _ in range(T)]
@@ -63,10 +52,6 @@ def estimate_model(A, B, pi, emissions):
             for i in range(N):
                 alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
             norm[t] = sum(alpha[t])
-            if DEBUG:
-                print("norm", norm[t])
-            if DEBUG:
-                print("alpha", alpha)
             alpha[t] = [alpha[t][i] / (norm[t]+EPSILON) for i in range(N)]
 
 
@@ -88,8 +73,6 @@ def estimate_model(A, B, pi, emissions):
         
         # --------- gamma ---------
         g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
-        if DEBUG:
-            print(g)
         # Re-estimate A, B, pi
         A = [[sum([dg[t][i][j] for t in range(T-1)]) / (sum([g[t][i] for t in range(T-1)])+EPSILON)
             for j in range(len(A[0]))] 
@@ -98,9 +81,6 @@ def estimate_model(A, B, pi, emissions):
             for k in range(len(B[0]))] 
             for j in range(len(B))]
         pi = [g[0]]
-
-        if DEBUG:
-            print("NORM:", norm)
 
         # Repeat until convergence
         logProb = sum([math.log(norm[i]+EPSILON) for i in range(len(norm))])
@@ -176,9 +156,6 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         :param true_type: the correct type of the fish
         :return:
         """
-
-        if DEBUG:
-            print("On fish", fish_id, "guessed", correct)
 
         # Tweak the model based on the observations for that fish
         A, B, pi = self.models[true_type]
