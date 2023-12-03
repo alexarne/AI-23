@@ -39,6 +39,7 @@ def estimate_model(A, B, pi, emissions):
     MAX_ITER = 100
     iter = 0
     while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
+        iter = iter + 1
         oldLogProb = logProb
         # Compute all (with alpha and beta normalized)
         norm = [1 for _ in range(T)]
@@ -89,7 +90,7 @@ def estimate_model(A, B, pi, emissions):
     return A, B, pi
 
 def init_matrix(size_y, size_x):
-    matrix = [[random.random() for _ in range(size_x)] for _ in range(size_y)]
+    matrix = [[1/size_x + random.random()/10 for _ in range(size_x)] for _ in range(size_y)]
     for i in range(size_y):
         rowsum = sum(matrix[i])
         matrix[i] = [v / rowsum for v in matrix[i]]
