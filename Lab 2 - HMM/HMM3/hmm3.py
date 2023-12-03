@@ -88,7 +88,7 @@ def backward(A, B, pi, emissions):
 
         # --------- beta (normalized) ---------
         beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
-        beta[-1] = [1 / norm[-1] for i in range(N)]
+        beta[-1] = [1 / norm[-1] for _ in range(N)]
         for t in range(T-2, -1, -1):
             for i in range(N):
                 beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
@@ -116,13 +116,11 @@ def backward(A, B, pi, emissions):
 
         # Repeat until convergence
         logProb = sum([math.log(norm[i]) for i in range(len(norm))])
-        if (oldLogProb is not None and logProb <= oldLogProb):
+        if (oldLogProb is not None) and (abs(oldLogProb - logProb) < 1e-2):
             break
         oldLogProb = logProb
 
     return A, B
-
-
 
 A = parse(input())
 B = parse(input())
