@@ -1,8 +1,8 @@
 docutils
 pygments
 pypiwin32
-kivy_deps.sdl2==0.1.*
-kivy_deps.glew==0.1.*
+kivy_deps.sdl2==0.6.*
+kivy_deps.glew==0.3.*
 Kivy==1.11.0
 numpy==1.19.1
 PyYAML==5.3.1

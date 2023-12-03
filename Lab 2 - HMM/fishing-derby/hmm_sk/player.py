@@ -4,6 +4,103 @@ from player_controller_hmm import PlayerControllerHMMAbstract
 from constants import *
 import random
 
+import math
+
+
+# forward algorithm - alpha-pass algorithm
+# A - Transition matrix
+# B - Emission matrix
+# pi - Initial state vector
+# emissions - Sequence of observations
+# Returns - Probability of observing the observation sequence
+def forward(A, B, pi, emissions):
+    N = len(A) # num states
+    alpha = [[0 for _ in range(N)] for _ in range(len(emissions))] # zeros matrix
+    alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
+    for t in range(1, len(emissions)):
+        for i in range(N):
+            alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
+    return sum(alpha[-1])
+
+# backward algorithm - beta-pass algorithm
+# A - Transition matrix
+# B - Emission matrix
+# pi - Initial state vector
+# emissions - Sequence of observations
+# Returns - New estimated transition matrix, emissions matrix, and initial state vector
+def estimate_model(A, B, pi, emissions):
+    print("estimating -------------")
+    N = len(A)          # num states
+    T = len(emissions)  # num observations
+
+    oldLogProb = 0
+    logProb = 1
+    MAX_ITER = 100
+    iter = 0
+    while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
+        print("new pass----------")
+        print("A:", A)
+        print("B:", B)
+        print("pi:", pi)
+        oldLogProb = logProb
+        # Compute all (with alpha and beta normalized)
+        norm = [1 for _ in range(T)]
+
+        # --------- alpha (normalized) ---------
+        alpha = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
+        norm[0] = sum(alpha[0])
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] / norm[0] for i in range(N)]
+        for t in range(1, T):
+            for i in range(N):
+                alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
+            norm[t] = sum(alpha[t])
+            print("norm", norm[t])
+            print("alpha", alpha)
+            alpha[t] = [alpha[t][i] / norm[t] for i in range(N)]
+
+
+        # --------- beta (normalized) ---------
+        beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
+        beta[-1] = [1 / norm[-1] for _ in range(N)]
+        for t in range(T-2, -1, -1):
+            for i in range(N):
+                beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
+                beta[t][i] = beta[t][i] / norm[t]
+
+        # --------- di-gamma ---------
+        # Doesn't need normalization because alpha & beta are normalized
+        # print(alpha[-1])
+        dg = [[[alpha[t][i]*A[i][j]*B[j][emissions[t+1]]*beta[t+1][j] 
+                for j in range(N)] 
+                for i in range(N)] 
+                for t in range(T-1)]
+        
+        # --------- gamma ---------
+        g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
+        print(g)
+        # Re-estimate A, B, pi
+        A = [[sum([dg[t][i][j] for t in range(T-1)]) / sum([g[t][i] for t in range(T-1)]) 
+            for j in range(len(A[0]))] 
+            for i in range(len(A))]
+        B = [[sum([(1 if emissions[t] == k else 0)*g[t][j] for t in range(T-1)]) / sum([g[t][j] for t in range(T-1)]) 
+            for k in range(len(B[0]))] 
+            for j in range(len(B))]
+        pi = [g[0]]
+
+        # Repeat until convergence
+        logProb = sum([math.log(norm[i]) for i in range(len(norm))])
+
+    return A, B, pi
+
+def init_matrix(size_y, size_x):
+    matrix = [[random.random() for _ in range(size_x)] for _ in range(size_y)]
+    for i in range(size_y):
+        rowsum = sum(matrix[i])
+        matrix[i] = [v / rowsum for v in matrix[i]]
+    return matrix
+
+
 
 class PlayerControllerHMM(PlayerControllerHMMAbstract):
     def init_parameters(self):
@@ -11,6 +108,16 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         In this function you should initialize the parameters you will need,
         such as the initialization of models, or fishes, among others.
         """
+
+        self.obs = [[] for _ in range(N_FISH)]
+        self.guesses = 0
+
+        # Models stored A, B, pi
+        self.models = [(init_matrix(1, 1),
+                        init_matrix(1, N_EMISSIONS),
+                        init_matrix(1, 1)) 
+                        for _ in range(N_SPECIES)]
+
         pass
 
     def guess(self, step, observations):
@@ -22,11 +129,29 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         :param observations: a list of N_FISH observations, encoded as integers
         :return: None or a tuple (fish_id, fish_type)
         """
+        
+        # Store observations
+        for i in range(len(observations)):
+            self.obs[i].append(observations[i])
 
-        # This code would make a random guess on each step:
-        # return (step % N_FISH, random.randint(0, N_SPECIES - 1))
-
-        return None
+        # Only start guessing when we have to
+        if (step < 5):
+            return None
+        
+        # Guess fish in order
+        # Use forward algorithm to get most probable model 
+        # for the observations
+        current_fish = self.guesses
+        highest = 0
+        index = 0
+        for i in range(N_SPECIES):
+            A, B, pi = self.models[i]
+            emissions = self.obs[current_fish]
+            val = forward(A, B, pi, emissions)
+            if val > highest:
+                highest = val
+                index = i
+        return (current_fish, index)
 
     def reveal(self, correct, fish_id, true_type):
         """
@@ -38,4 +163,13 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         :param true_type: the correct type of the fish
         :return:
         """
+
+        print("On fish", fish_id, "guessed", correct)
+
+        # Tweak the model based on the observations for that fish
+        A, B, pi = self.models[true_type]
+        observations = self.obs[fish_id]
+        self.models[true_type] = estimate_model(A, B, pi, observations)
+        self.guesses = self.guesses + 1
+
         pass
