@@ -3,8 +3,10 @@
 from player_controller_hmm import PlayerControllerHMMAbstract
 from constants import *
 import random
-
 import math
+import sys
+EPSILON = sys.float_info.epsilon
+
 
 
 # forward algorithm - alpha-pass algorithm
@@ -50,23 +52,23 @@ def estimate_model(A, B, pi, emissions):
         alpha = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
         alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
         norm[0] = sum(alpha[0])
-        alpha[0] = [pi[0][i] * B[i][emissions[0]] / norm[0] for i in range(N)]
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] / (norm[0]+EPSILON) for i in range(N)]
         for t in range(1, T):
             for i in range(N):
                 alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
             norm[t] = sum(alpha[t])
             print("norm", norm[t])
             print("alpha", alpha)
-            alpha[t] = [alpha[t][i] / norm[t] for i in range(N)]
+            alpha[t] = [alpha[t][i] / (norm[t]+EPSILON) for i in range(N)]
 
 
         # --------- beta (normalized) ---------
         beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
-        beta[-1] = [1 / norm[-1] for _ in range(N)]
+        beta[-1] = [1 / (norm[-1]+EPSILON) for _ in range(N)]
         for t in range(T-2, -1, -1):
             for i in range(N):
                 beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
-                beta[t][i] = beta[t][i] / norm[t]
+                beta[t][i] = beta[t][i] / (norm[t]+EPSILON)
 
         # --------- di-gamma ---------
         # Doesn't need normalization because alpha & beta are normalized
@@ -80,16 +82,18 @@ def estimate_model(A, B, pi, emissions):
         g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
         print(g)
         # Re-estimate A, B, pi
-        A = [[sum([dg[t][i][j] for t in range(T-1)]) / sum([g[t][i] for t in range(T-1)]) 
+        A = [[sum([dg[t][i][j] for t in range(T-1)]) / (sum([g[t][i] for t in range(T-1)])+EPSILON)
             for j in range(len(A[0]))] 
             for i in range(len(A))]
-        B = [[sum([(1 if emissions[t] == k else 0)*g[t][j] for t in range(T-1)]) / sum([g[t][j] for t in range(T-1)]) 
+        B = [[sum([(1 if emissions[t] == k else 0)*g[t][j] for t in range(T-1)]) / (sum([g[t][j] for t in range(T-1)])+EPSILON)
             for k in range(len(B[0]))] 
             for j in range(len(B))]
         pi = [g[0]]
 
+        print("NORM:", norm)
+
         # Repeat until convergence
-        logProb = sum([math.log(norm[i]) for i in range(len(norm))])
+        logProb = sum([math.log(norm[i]+EPSILON) for i in range(len(norm))])
 
     return A, B, pi
 
@@ -99,8 +103,6 @@ def init_matrix(size_y, size_x):
         rowsum = sum(matrix[i])
         matrix[i] = [v / rowsum for v in matrix[i]]
     return matrix
-
-
 
 class PlayerControllerHMM(PlayerControllerHMMAbstract):
     def init_parameters(self):
