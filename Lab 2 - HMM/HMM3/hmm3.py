@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 
 def parse(line):
     line = line.split()
@@ -62,60 +63,64 @@ def viterbi(A, B, pi, emissions):
 # B - Emission matrix
 # pi - Initial state vector
 # emissions - Sequence of observations
-# Returns - Estimated transition matrix and emissions matrix
+# Returns - New estimated transition matrix and emissions matrix
 def backward(A, B, pi, emissions):
     N = len(A)          # num states
     T = len(emissions)  # num observations
-    print(A)
-    print(B)
-    print(pi)
 
-    # Compute all
+    oldLogProb = None
+    MAX_ITER = 100
+    for _ in range(MAX_ITER):
+        # Compute all (with alpha and beta normalized)
+        norm = [1 for _ in range(T)]
 
-    # --------- alpha ---------
-    alpha = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
-    alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
-    for t in range(1, T):
-        for i in range(N):
-            alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
-    
-    # --------- beta ---------
-    beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
-    beta[-1] = [1 for i in range(N)]
-    for t in range(T-2, -1, -1):
-        for i in range(N):
-            beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
+        # --------- alpha (normalized) ---------
+        alpha = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] for i in range(N)]
+        norm[0] = sum(alpha[0])
+        alpha[0] = [pi[0][i] * B[i][emissions[0]] / norm[0] for i in range(N)]
+        for t in range(1, T):
+            for i in range(N):
+                alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
+            norm[t] = sum(alpha[t])
+            alpha[t] = [alpha[t][i] / norm[t] for i in range(N)]
 
-    # --------- di-gamma ---------
-    print(alpha[0])
-    print(alpha[1])
-    print(alpha[2])
-    print(alpha[3])
-    asum = sum([alpha[-1][k] for k in range(N)])
-    dg = [[[alpha[t][i]*A[i][j]*B[j][emissions[t+1]]*beta[t+1][j] / asum 
-            for j in range(N)] 
-            for i in range(N)] 
-            for t in range(T-1)]
-    
-    # --------- gamma ---------
-    g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
-    
-    # Re-estimate A, B, pi
-    A2 = [[sum([dg[t][i][j] for t in range(T-1)]) / sum([g[t][i] for t in range(T-1)]) 
-           for j in range(len(A[0]))] 
-           for i in range(len(A))]
-    B2 = [[sum([(1 if emissions[t] == k else 0)*g[t][j] for t in range(T-1)]) / sum([g[t][j] for t in range(T-1)]) 
-           for k in range(len(B[0]))] 
-           for j in range(len(B))]
-    pi2 = [[g[0][i] for i in range(N)]]
 
-    print(A2)
-    print(B2)
-    print(pi2)
+        # --------- beta (normalized) ---------
+        beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
+        beta[-1] = [1 / norm[-1] for i in range(N)]
+        for t in range(T-2, -1, -1):
+            for i in range(N):
+                beta[t][i] = sum([beta[t+1][j] * B[j][emissions[t+1]] * A[i][j] for j in range(N)])
+                beta[t][i] = beta[t][i] / norm[t]
 
-    # Repeat until convergence
+        # --------- di-gamma ---------
+        # Doesn't need normalization because alpha & beta are normalized
+        # print(alpha[-1])
+        dg = [[[alpha[t][i]*A[i][j]*B[j][emissions[t+1]]*beta[t+1][j] 
+                for j in range(N)] 
+                for i in range(N)] 
+                for t in range(T-1)]
+        
+        # --------- gamma ---------
+        g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
+        
+        # Re-estimate A, B, pi
+        A = [[sum([dg[t][i][j] for t in range(T-1)]) / sum([g[t][i] for t in range(T-1)]) 
+            for j in range(len(A[0]))] 
+            for i in range(len(A))]
+        B = [[sum([(1 if emissions[t] == k else 0)*g[t][j] for t in range(T-1)]) / sum([g[t][j] for t in range(T-1)]) 
+            for k in range(len(B[0]))] 
+            for j in range(len(B))]
+        pi = [g[0]]
 
-    return [[1, 2, 3], [2, 3, 4]], [[1, 2, 3], [2, 3, 4]]
+        # Repeat until convergence
+        logProb = sum([math.log(norm[i]) for i in range(len(norm))])
+        if (oldLogProb is not None and logProb <= oldLogProb):
+            break
+        oldLogProb = logProb
+
+    return A, B
 
 
 
