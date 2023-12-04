@@ -138,32 +138,30 @@ emissions = list(map(int,input().split()))
 # pi = [[0.7, 0.15, 0.15]]
 
 # Q9
-for N in range(1,6):
+for N in range(1,5):
     A = init_matrix(N, N)
     B = init_matrix(N, 4)
     pi = init_matrix(1, N)
-    halfway = int(len(emissions)/2)
-    if PRINT:
-        print("N =",N,", BEFORE:")
-        print(A)
-        print(B)
-        print(pi)
-    # print(emissions[1:halfway])
-    # print(emissions[halfway:])
-    A2, B2, pi2 = baumwelch(A, B, pi, emissions[1:halfway])
-    if PRINT:
-        print("N =",N,", AFTER:")
-        print(A2)
-        print(B2)
-        print(pi2)
-    alpha = forward(A2, B2, pi2, emissions[halfway:])
-    print("N =",N,"=> alpha =",alpha)
+    k = 5
+    breakpoint = int(len(emissions)/k)
+    for i in range(k):
+        A1 = A
+        B1 = B
+        pi1 = pi
+        training = (emissions[1+breakpoint*i:breakpoint*(i+1)+1])
+        validation = (emissions[1:1+breakpoint*i] + emissions[breakpoint*(i+1)+1:])
+        print("length of training set:",len(training))
+        print("length of validation set:",len(validation))
+        A2, B2, pi2 = baumwelch(A1, B1, pi1, training)
+        alpha = forward(A2, B2, pi2, validation)
+        print("N =",N,"=> alpha =",alpha)
 
 # # Q10
 # Uniform matrices: 
 # A = uniform_matrix(3, 3)
 # B = uniform_matrix(3, 4)
-# pi = uniform_matrix(1, 3)
+# # pi = uniform_matrix(1, 3)
+# pi = [[0.5, 0.1, 0.4]]
 
 # # Diagonal A and specific start state:
 # A = diagonal_matrix(3, 3)
