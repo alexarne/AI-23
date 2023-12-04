@@ -7,8 +7,6 @@ import math
 import sys
 EPSILON = sys.float_info.epsilon # to avoid division by zero or logarithm of zero
 
-
-
 # forward algorithm - alpha-pass algorithm
 # A - Transition matrix
 # B - Emission matrix
@@ -36,13 +34,10 @@ def estimate_model(A, B, pi, emissions):
 
     oldLogProb = 0
     logProb = 1
-    MAX_ITER = 100
+    MAX_ITER = 10000
     iter = 0
-    while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-2:
-<<<<<<< HEAD:Lab 2 - HMM/fishing-derby/hmm_sk/player.py
-=======
+    while iter < MAX_ITER and abs(oldLogProb - logProb) >= EPSILON:
         iter = iter + 1
->>>>>>> 18ba79512bc0b76aec7b227ef4cd72c4b0396c84:Lab 2 - HMM/B-A/player.py
         oldLogProb = logProb
         # Compute all (with alpha and beta normalized)
         norm = [1 for _ in range(T)]
@@ -55,14 +50,8 @@ def estimate_model(A, B, pi, emissions):
         for t in range(1, T):
             for i in range(N):
                 alpha[t][i] = sum([alpha[t-1][j] * A[j][i] for j in range(N)]) * B[i][emissions[t]]
-<<<<<<< HEAD:Lab 2 - HMM/fishing-derby/hmm_sk/player.py
-            norm[t] = sum(alpha[t])
-            alpha[t] = [alpha[t][i] / (norm[t]+EPSILON) for i in range(N)]
-=======
             norm[t] = sum(alpha[t]) + EPSILON
             alpha[t] = [alpha[t][i] / norm[t] for i in range(N)]
->>>>>>> 18ba79512bc0b76aec7b227ef4cd72c4b0396c84:Lab 2 - HMM/B-A/player.py
-
 
         # --------- beta (normalized) ---------
         beta = [[0 for _ in range(N)] for _ in range(T)] # zeros matrix
@@ -82,10 +71,7 @@ def estimate_model(A, B, pi, emissions):
         
         # --------- gamma ---------
         g = [[sum([dg[t][i][j] for j in range(N)]) for i in range(N)] for t in range(T-1)]
-<<<<<<< HEAD:Lab 2 - HMM/fishing-derby/hmm_sk/player.py
-=======
         
->>>>>>> 18ba79512bc0b76aec7b227ef4cd72c4b0396c84:Lab 2 - HMM/B-A/player.py
         # Re-estimate A, B, pi
         A = [[sum([dg[t][i][j] for t in range(T-1)]) / (sum([g[t][i] for t in range(T-1)])+EPSILON)
             for j in range(len(A[0]))] 
@@ -173,7 +159,8 @@ class PlayerControllerHMM(PlayerControllerHMMAbstract):
         # Tweak the model based on the observations for that fish
         A, B, pi = self.models[true_type]
         observations = self.obs[fish_id]
-        self.models[true_type] = estimate_model(A, B, pi, observations)
+        if not correct:
+            self.models[true_type] = estimate_model(A, B, pi, observations)
         self.guesses = self.guesses + 1
 
         pass
