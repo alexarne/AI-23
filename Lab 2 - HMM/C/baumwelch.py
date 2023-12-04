@@ -43,7 +43,7 @@ def forward(A, B, pi, sequence):
 # pi - Initial state vector
 # emissions - Sequence of observations
 # Returns - New estimated transition matrix, emissions matrix, and initial state vector
-PRINT = False
+PRINT = True
 def baumwelch(A, B, pi, emissions):
     N = len(A)          # num states
     T = len(emissions)  # num observations
@@ -52,7 +52,7 @@ def baumwelch(A, B, pi, emissions):
     logProb = 1
     MAX_ITER = 100
     iter = 0
-    while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-4:
+    while iter < MAX_ITER and abs(oldLogProb - logProb) > 1e-3:
         iter = iter + 1
         if PRINT:
             print("Iteration", iter)
@@ -138,26 +138,34 @@ emissions = list(map(int,input().split()))
 # pi = [[0.7, 0.15, 0.15]]
 
 # Q9
-for N in range(1,5):
-    A = init_matrix(N, N)
-    B = init_matrix(N, 4)
-    pi = init_matrix(1, N)
-    k = 5
-    breakpoint = int(len(emissions)/k)
-    for i in range(k):
-        A1 = A
-        B1 = B
-        pi1 = pi
-        training = (emissions[1+breakpoint*i:breakpoint*(i+1)+1])
-        validation = (emissions[1:1+breakpoint*i] + emissions[breakpoint*(i+1)+1:])
-        print("length of training set:",len(training))
-        print("length of validation set:",len(validation))
-        A2, B2, pi2 = baumwelch(A1, B1, pi1, training)
-        alpha = forward(A2, B2, pi2, validation)
-        print("N =",N,"=> alpha =",alpha)
+# for N in range(1,5):
+#     A = init_matrix(N, N)
+#     B = init_matrix(N, 4)
+#     pi = init_matrix(1, N)
+#     breakpoint = int(len(emissions)*4/5)
+#     A1 = A
+#     B1 = B
+#     pi1 = pi
+#     training = (emissions[1:1+breakpoint])
+#     validation = (emissions[1+breakpoint:])
+#     print("length of training set:",len(training))
+#     print("length of validation set:",len(validation))
+#     A2, B2, pi2 = baumwelch(A1, B1, pi1, training)
+#     alpha = forward(A2, B2, pi2, validation)
+#     print("N =",N,"=> alpha =",alpha)
+
+# # Q9 v2
+# for N in range(1, 6):
+#     A = init_matrix(N, N)
+#     B = init_matrix(N, 4)
+#     pi = init_matrix(1, N)
+#     A2, B2, pi2 = baumwelch(A, B, pi, emissions[1:])
+#     alpha = forward(A2, B2, pi2, emissions[1:])
+#     print("N =",N,"=> alpha =",alpha)
+
 
 # # Q10
-# Uniform matrices: 
+# # Uniform matrices: 
 # A = uniform_matrix(3, 3)
 # B = uniform_matrix(3, 4)
 # # pi = uniform_matrix(1, 3)
@@ -169,14 +177,14 @@ for N in range(1,5):
 # B = init_matrix(3, 4)
 # pi = [[0.0, 0.0, 1.0]]
 
-# # Close to solution:
-# A = [[0.72, 0.04, 0.24],
-#      [0.13, 0.78, 0.09],
-#      [0.21, 0.28, 0.51]]
-# B = [[0.69, 0.22, 0.08, 0.01],
-#      [0.08, 0.42, 0.27, 0.23],
-#      [0.03, 0.07, 0.18, 0.72]]
-# pi = [[0.9, 0.05, 0.05]]
+# Close to solution:
+A = [[0.72, 0.04, 0.24],
+     [0.13, 0.78, 0.09],
+     [0.21, 0.28, 0.51]]
+B = [[0.69, 0.22, 0.08, 0.01],
+     [0.08, 0.42, 0.27, 0.23],
+     [0.03, 0.07, 0.18, 0.72]]
+pi = [[0.9, 0.05, 0.05]]
 
 A2, B2, pi2 = baumwelch(A, B, pi, emissions[1:])
 print(A2)
