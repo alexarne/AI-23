@@ -220,7 +220,7 @@ class PlayerControllerRL(PlayerController, FishesModelling):
 
                 # ADD YOUR CODE SNIPPET BETWEEN EX. 2.2
                 # Implement the Bellman Update equation to update Q
-                Q[s_current, action] = (1-self.alpha)*Q[s_current, action] + self.alpha*(R + self.gamma*np.nanmax(Q[s_next]))
+                Q[s_current, action] = (1-lr)*Q[s_current, action] + lr*(R + discount*np.nanmax(Q[s_next]))
                 # ADD YOUR CODE SNIPPET BETWEEN EX. 2.2
 
                 s_current = s_next
