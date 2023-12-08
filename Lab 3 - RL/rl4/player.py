@@ -96,12 +96,14 @@ def epsilon_greedy(Q,
                    eps_type="constant"):
 
     if eps_type == 'constant':
-        epsilon = epsilon_final
         # ADD YOUR CODE SNIPPET BETWEEN EX 4.1
         # Implemenmt the epsilon-greedy algorithm for a constant epsilon value
         # Use epsilon and all input arguments of epsilon_greedy you see fit
         # It is recommended you use the np.random module
-        action = None
+
+        epsilon = epsilon_final
+        # rest of function outside is shared
+
         # ADD YOUR CODE SNIPPET BETWEEN EX 4.1
 
     elif eps_type == 'linear':
@@ -110,11 +112,25 @@ def epsilon_greedy(Q,
         # Use epsilon and all input arguments of epsilon_greedy you see fit
         # use the ScheduleLinear class
         # It is recommended you use the np.random module
-        action = None
+        linear = ScheduleLinear(
+            schedule_timesteps = anneal_timesteps, 
+            final_p = epsilon_final, 
+            initial_p = epsilon_initial
+        )
+        epsilon = linear.value(current_total_steps)
+
+        # rest of function is shared
+
         # ADD YOUR CODE SNIPPET BETWEENEX  4.2
 
     else:
         raise "Epsilon greedy type unknown"
+    
+    possible_actions = Q[state]
+    if np.random.rand(1) < epsilon:
+        action = all_actions[np.random.randint(0,len(all_actions))]
+    else:
+        action = np.nanargmax(possible_actions)
 
     return action
 
@@ -198,7 +214,8 @@ class PlayerControllerRL(PlayerController, FishesModelling):
                 # ADD YOUR CODE SNIPPET BETWEEN EX 2.1 and 2.2
                 # Chose an action from all possible actions
                 # action = possible_actions[np.random.randint(0,len(possible_actions))]
-                action = np.nanargmax(Q[s_current])
+                # action = np.nanargmax(Q[s_current])
+                action = epsilon_greedy(Q, s_current, list_pos, 0, self.settings.epsilon_initial, self.settings.epsilon_final, self.settings.annealing_timesteps, "linear")
                 # ADD YOUR CODE SNIPPET BETWEEN EX 2.1 and 2.2
 
                 # ADD YOUR CODE SNIPPET BETWEEN EX 5
