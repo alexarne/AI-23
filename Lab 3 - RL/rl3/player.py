@@ -26,8 +26,8 @@ class PlayerController(SettingLoader, Communicator):
         self.init_state = None
         self.ind2state = None
         self.state2ind = None
-        self.alpha = 0
-        self.gamma = 0
+        self.alpha = 0.2
+        self.gamma = 0.8
         self.episode_max = 300
 
     def init_states(self):
