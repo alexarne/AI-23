@@ -215,7 +215,7 @@ class PlayerControllerRL(PlayerController, FishesModelling):
                 # Chose an action from all possible actions
                 # action = possible_actions[np.random.randint(0,len(possible_actions))]
                 # action = np.nanargmax(Q[s_current])
-                action = epsilon_greedy(Q, s_current, list_pos, 0, self.settings.epsilon_initial, self.settings.epsilon_final, self.settings.annealing_timesteps, "linear")
+                action = epsilon_greedy(Q, s_current, list_pos, steps, self.settings.epsilon_initial, self.settings.epsilon_final, self.settings.annealing_timesteps, "linear")
                 # ADD YOUR CODE SNIPPET BETWEEN EX 2.1 and 2.2
 
                 # ADD YOUR CODE SNIPPET BETWEEN EX 5
@@ -372,5 +372,7 @@ class ScheduleLinear(object):
     def value(self, t):
         # ADD YOUR CODE SNIPPET BETWEEN EX 4.2
         # Return the annealed linear value
-        return self.initial_p
+        ed = self.final_p-self.initial_p
+        et = self.initial_p + ed*min(t/self.schedule_timesteps, 1)
+        return et
         # ADD YOUR CODE SNIPPET BETWEEN EX 4.2
