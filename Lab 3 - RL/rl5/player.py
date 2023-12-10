@@ -200,7 +200,7 @@ class PlayerControllerRL(PlayerController, FishesModelling):
         # Change the while loop to incorporate a threshold limit, to stop training when the mean difference
         # in the Q table is lower than the threshold
         diff = 1
-        while episode <= 700:
+        while episode <= self.episode_max:
             if abs(diff) < self.threshold:
                 break
             # ADD YOUR CODE SNIPPET BETWEENEX. 2.3
