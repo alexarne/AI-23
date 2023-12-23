@@ -1,0 +1,47 @@
+(define (domain tiago-domain)
+
+(:predicates
+(ROBOT ?x) ; True if x is a robot
+(ROOM ?x) (DOOR ?x) (BOOK ?x) (SHELF ?x) (ITEM ?x) (ARM ?x)
+(HAS-ARM ?x ?y) ; True if y is an arm of robot x
+(HAS-ACCESS ?x ?y) ; True if the room x has access to the door y
+(is-at ?x ?y) ; True if x is at room y
+(is-open ?x) ; True if the door x is open
+(is-free ?x)
+(has-item ?x ?y)
+)
+
+
+(:action open-door 
+:parameters ()
+:precondition ()
+:effect ()
+)
+
+(:action pick-item
+:parameters ()
+:precondition ()
+:effect ()
+)
+
+(:action put-shelf
+:parameters ()
+:precondition ()
+:effect ()
+)
+
+(:action go-to
+:parameters (?robot ?from ?to ?via)
+:precondition (and
+                (ROOM ?from)
+                (ROOM ?to)
+                (DOOR ?via)
+                (is-at ?robot ?from)
+                (is-open ?via)
+                (HAS-ACCESS ?from ?via)
+                (HAS-ACCESS ?to ?via)
+                )
+:effect (and (not (is-at ?robot ?from))
+                (is-at ?robot ?to))
+)
+)

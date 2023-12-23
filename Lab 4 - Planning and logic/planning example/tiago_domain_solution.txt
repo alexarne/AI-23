@@ -1,0 +1,79 @@
+(define (domain tiago-domain)
+
+(:predicates
+(ROBOT ?x) ; True if x is a robot
+(ROOM ?x) (DOOR ?x) (BOOK ?x) (SHELF ?x) (ITEM ?x) (ARM ?x)
+(HAS-ARM ?x ?y) ; True if y is an arm of robot x
+(HAS-ACCESS ?x ?y) ; True if the room x has access to the door y
+(is-at ?x ?y) ; True if x is at room y
+(is-open ?x) ; True if the door x is open
+(is-free ?x)
+(has-item ?x ?y)
+)
+
+
+(:action open-door 
+:parameters (?robot ?arm ?room ?door)
+:precondition (and
+         (ROBOT ?robot)
+         (ARM ?arm)
+         (ROOM ?room)
+         (DOOR ?door)
+		 (HAS-ARM ?robot ?arm)
+		 (HAS-ACCESS ?room ?door)
+		 (is-at ?robot ?room)
+		 (is-free ?arm)
+ 		)
+:effect (is-open ?door)
+)
+
+(:action pick-item
+:parameters (?robot ?arm ?room ?item)
+:precondition (and
+                (ROBOT ?robot)
+                (ARM ?arm)
+                (ROOM ?room)
+                (ITEM ?item)
+                (HAS-ARM ?robot ?arm)
+                (is-at ?robot ?room)
+                (is-at ?item ?room)
+                (is-free ?arm)
+                )
+:effect (and (has-item ?arm ?item)
+                (not (is-free ?arm))
+                (not (is-at ?item ?room)))
+)
+
+(:action put-shelf
+:parameters (?robot ?arm ?room ?item ?shelf)
+:precondition (and
+                (ROBOT ?robot)
+                (ARM ?arm)
+                (ROOM ?room)
+                (SHELF ?shelf)
+                (ITEM ?item)
+                (HAS-ARM ?robot ?arm)
+                (is-at ?robot ?room)
+                (is-at ?shelf ?room)
+                (has-item ?arm ?item)
+                )
+:effect (and (not (has-item ?arm ?item))
+                (is-free ?arm)
+                (is-at ?item ?shelf))
+)
+(:action go-to
+:parameters (?robot ?from ?to ?via)
+:precondition (and
+                (ROBOT ?robot)
+                (ROOM ?from)
+                (ROOM ?to)
+                (DOOR ?via)
+                (is-at ?robot ?from)
+                (is-open ?via)
+                (HAS-ACCESS ?from ?via)
+                (HAS-ACCESS ?to ?via)
+                )
+:effect (and (not (is-at ?robot ?from))
+                (is-at ?robot ?to))
+)
+)
