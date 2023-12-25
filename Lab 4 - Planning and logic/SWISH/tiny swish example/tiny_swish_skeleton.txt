@@ -1,0 +1,3 @@
+detectives(De) :-
+length(De, 3),
+member(e(peralta,_,blue), De).

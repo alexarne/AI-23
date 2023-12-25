@@ -1,0 +1,103 @@
+%%  students(Solution).
+%   @param  Solution is a list of students that satisfy all constraints.
+/* 4 students logical puzzle: 
+* 
+* The constants:
+* Students: s1, s2, s3, s4
+* Chapters: data, physics, machine, electro
+* Buildings: e, u
+* Transports: tbana, bike, bus, walk
+* Neighbourhoods: ostermalm, norrmalm, kungsholmen, sodermalm
+* 
+* We define that:
+*  Two students are friends if they study in the same building.
+* 
+* And we know the following facts:
+*  F1- s4 studies at u building;
+*  F2- s2 takes the bike to school;
+*  F3- s3 belongs to the electro chapter;
+*  F4- The student that walks to university lives in ostermalm;
+*  F5- s1 and s3 are friends;
+*  F6- Exactly two students study in each building;
+*  F7- Whoever studies in data takes the bus from kungsholmen;
+*  F8- Only students from physics and machine are allowed on the u building;
+*  F9- All electro chapter students live in the same student housing in ostermalm;
+*  F10- The friend of the student that takes the bike lives in norrmalm;
+*/
+% Render the houses term as a nice table.
+:- use_rendering(table,[header(p('Student', 'Chapter', 'Building', 'Transport', 'Neighbourhood'))]).
+%Two students are friends if they study in the same building.
+friends(S1, S2, Ls) :-              
+    member(p(S1, _, X, _, _),Ls),
+    member(p(S2, _, Y, _, _),Ls),
+    not(S1 == S2),
+    X = Y.
+
+% The facts:
+fact1(Ls) :- 
+    member(p(s4,_,u,_,_), Ls).
+fact2(Ls) :- 
+%   fill here
+    member(p(s2, _, _, bike, _), Ls).
+fact3(Ls) :- 
+%   fill here
+    member(p(s3, electro, _, _, _), Ls).
+fact4(Ls) :-
+%   fill here
+    member(p(_, _, _, walk, ostermalm), Ls).
+fact5(Ls) :-
+%   fill here
+    friends(s1, s3, Ls).
+fact6(Ls) :-
+%   fill here
+    member(p(S1, _, e, _, _), Ls),
+    member(p(S2, _, e, _, _), Ls),
+    member(p(S3, _, u, _, _), Ls),
+    member(p(S4, _, u, _, _), Ls),
+    not(S1 == S2),
+    not(S3 == S4).
+fact7(Ls) :-
+%   fill here
+    member(p(_, data, _, bus, kungsholmen), Ls).
+fact8(Ls) :-
+%   fill here
+	not(member(p(_, data, u, _, _), Ls)),
+	not(member(p(_, electro, u, _, _), Ls)).
+
+%fact8([]).
+%fact8([p(_, X, u, _, _)|T]) :-
+%    !,
+%    (X = machine ; X = physics),
+%    fact8(T).
+%fact8([_|T]) :-
+%    fact8(T).
+    
+fact9(Ls) :- 
+%   fill here
+    member(p(_, electro, _, _, ostermalm), Ls).
+fact10(Ls) :-
+%   fill here
+    member(p(X, _, _, bike, _), Ls),
+    member(p(Y, _, _, _, norrmalm), Ls),
+    friends(X, Y, Ls).
+
+% Problem:
+students(Ls) :-
+    length(Ls, 4),                      %There are 4 students in our list Ls
+    member(p(s1,_,_,_,_), Ls), member(p(s2,_,_,_,_), Ls), member(p(s3,_,_,_,_), Ls), member(p(s4,_,_,_,_), Ls), %One of them is s1, one is s2, one is s3, one is s4
+    member(p(_,data,_,_,_), Ls), member(p(_,physics,_,_,_), Ls), member(p(_,machine,_, _,_), Ls), member(p(_,electro,_, _,_), Ls), %One of them studies data, one physics, one machine and one electro
+    member(p(_,_,e,_,_), Ls), member(p(_,_,u, _,_), Ls), %Some study in e building, some in u building
+    member(p(_,_,_, tbana,_), Ls), member(p(_,_,_, bike,_), Ls), member(p(_,_,_, bus,_), Ls), member(p(_,_,_, walk,_), Ls), %One of them rides the tbana, one the bike, one the bus, one walks
+    member(p(_,_,_, _,ostermalm), Ls), member(p(_,_,_, _,norrmalm), Ls), member(p(_,_,_, _,kungsholmen), Ls), member(p(_,_,_, _,sodermalm), Ls), %One of them live in ostermalm, one in norrmalm, one in kungsholmen, one in sodermalm
+    fact1(Ls),
+    fact2(Ls),
+    fact3(Ls),
+    fact4(Ls),
+    fact5(Ls),
+    fact6(Ls),
+    fact7(Ls),
+    fact8(Ls),
+    fact9(Ls),
+    fact10(Ls),
+    !.
+%To see the results, run ?- students(Solution).

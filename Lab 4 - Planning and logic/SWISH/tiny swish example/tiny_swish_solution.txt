@@ -1,0 +1,12 @@
+detectives(De) :-
+length(De, 3),                                 
+member(e(peralta,_,blue), De),
+member(e(_,cofee,green), De),
+member(e(diaz,tea,_), De),
+member(e(holt,_,_), De),
+member(e(_,_,white), De),
+member(e(_,milk,_), De).
+
+And then in the query part:
+detectives(De),
+member(e(X,_,white), De)
