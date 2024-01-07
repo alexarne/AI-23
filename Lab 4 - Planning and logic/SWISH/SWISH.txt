@@ -61,17 +61,8 @@ fact7(Ls) :-
     member(p(_, data, _, bus, kungsholmen), Ls).
 fact8(Ls) :-
 %   fill here
-	not(member(p(_, data, u, _, _), Ls)),
-	not(member(p(_, electro, u, _, _), Ls)).
-
-%fact8([]).
-%fact8([p(_, X, u, _, _)|T]) :-
-%    !,
-%    (X = machine ; X = physics),
-%    fact8(T).
-%fact8([_|T]) :-
-%    fact8(T).
-    
+    not(member(p(_, data, u, _, _), Ls)),
+    not(member(p(_, electro, u, _, _), Ls)).
 fact9(Ls) :- 
 %   fill here
     member(p(_, electro, _, _, ostermalm), Ls).
